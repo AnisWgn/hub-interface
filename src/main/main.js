@@ -2,16 +2,20 @@ const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
 const { exec } = require('child_process');
 const fs = require('fs');
-const { autoUpdater } = require('electron-updater');
 
-// Auto Updater Configuration
-autoUpdater.autoDownload = true;
-autoUpdater.autoInstallOnAppQuit = true;
+// Auto-update temporarily disabled due to bundling issues
+// To re-enable: npm install electron-updater and uncomment below
+// const { autoUpdater } = require('electron-updater');
+// autoUpdater.autoDownload = true;
+// autoUpdater.autoInstallOnAppQuit = true;
 
 // Fix for "Unable to move the cache: Access Denied (0x5)"
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 app.commandLine.appendSwitch('disable-gpu'); // Force software rendering if GPU cache fails
-app.setPath('userData', path.join(app.getAppPath(), 'data'));
+// En dev seulement : userData dans le dossier du projet. En .exe : laisser le défaut (AppData) pour éviter erreurs d'écriture.
+if (!app.isPackaged) {
+    app.setPath('userData', path.join(app.getAppPath(), 'data'));
+}
 
 // Single Instance Lock
 const gotTheLock = app.requestSingleInstanceLock();
@@ -43,11 +47,16 @@ if (!gotTheLock) {
             show: false,
         });
 
-        mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+        // Chemin qui fonctionne en dev (electron .) et en .exe packagé
+        const htmlPath = path.join(app.getAppPath(), 'src', 'renderer', 'index.html');
+        mainWindow.loadFile(htmlPath);
         mainWindow.once('ready-to-show', () => {
             mainWindow.maximize();
             mainWindow.show();
             console.log('Hub Interface initialized successfully.');
+            if (!app.isPackaged) {
+                mainWindow.webContents.openDevTools();
+            }
         });
 
         mainWindow.on('enter-full-screen', () => {
@@ -74,11 +83,12 @@ if (!gotTheLock) {
     app.whenReady().then(() => {
         createWindow();
 
-        // Check for updates after window is ready
-        autoUpdater.checkForUpdatesAndNotify();
+        // Auto-update disabled - check commented out
+        // autoUpdater.checkForUpdatesAndNotify();
     });
 
-    // Auto Updater Events
+    // Auto Updater Events - Disabled
+    /*
     autoUpdater.on('update-available', (info) => {
         console.log('Update available:', info.version);
         if (mainWindow) {
@@ -103,6 +113,7 @@ if (!gotTheLock) {
     autoUpdater.on('error', (err) => {
         console.error('Auto-updater error:', err);
     });
+    */
 
     app.on('window-all-closed', () => {
         if (process.platform !== 'darwin') {

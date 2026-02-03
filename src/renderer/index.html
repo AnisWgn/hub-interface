@@ -7,9 +7,34 @@
     <title>Nexus Hub</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <script>
+        // Hide Node/Electron globals so Firebase runs in browser mode (use only window.xxx to avoid ReferenceError)
+        (function () {
+            var w = window;
+            if (w.process !== undefined) { w.__tempProcess = w.process; w.process = undefined; }
+            if (w.global !== undefined) { w.__tempGlobal = w.global; w.global = w; }
+            if (w.module !== undefined) { w.__tempModule = w.module; w.module = undefined; }
+            if (w.exports !== undefined) { w.__tempExports = w.exports; w.exports = undefined; }
+            if (w.require !== undefined) { w.__tempRequire = w.require; w.require = undefined; }
+            if (w.Buffer !== undefined) { w.__tempBuffer = w.Buffer; w.Buffer = undefined; }
+        })();
+    </script>
+
     <!-- Firebase SDK (Version 8) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        // Restore Node/Electron globals for renderer.js (require, process, etc.)
+        if (window.__tempProcess !== undefined) { window.process = window.__tempProcess; }
+        if (window.__tempGlobal !== undefined) { window.global = window.__tempGlobal; }
+        if (window.__tempRequire !== undefined) { window.require = window.__tempRequire; }
+        if (window.__tempExports !== undefined) { window.exports = window.__tempExports; }
+        if (window.__tempModule !== undefined) { window.module = window.__tempModule; }
+        if (window.__tempBuffer !== undefined) { window.Buffer = window.__tempBuffer; }
+    </script>
+
     <script src="../config/firebase-config.js"></script>
 </head>
 
@@ -19,6 +44,7 @@
             <div class="header-content">
                 <div class="logo">
                     <span class="logo-text">NEXUS <span class="highlight">HUB</span></span>
+                    <span id="firebase-status" class="connection-status connecting" title="Connexion Firebase">⏳</span>
                 </div>
                 <div class="controls">
                     <button id="theme-toggle" class="win-control" title="Changer de thème">🌙</button>

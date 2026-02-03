@@ -135,6 +135,31 @@ header {
     color: var(--accent-primary);
 }
 
+/* Firebase Connection Status Indicator */
+.connection-status {
+    font-size: 0.8rem;
+    margin-left: 10px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    transition: var(--transition-base);
+}
+
+.connection-status.connecting {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.connection-status.connected {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.connection-status.error {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
 .controls {
     display: flex;
     gap: 8px;
@@ -498,6 +523,36 @@ main::-webkit-scrollbar-thumb {
 
 .delete-btn:hover {
     background: #ef4444;
+    color: var(--card-bg);
+    transform: scale(1.1);
+}
+
+.edit-btn {
+    position: absolute;
+    top: 12px;
+    right: 52px;
+    background: var(--card-bg);
+    color: var(--accent-primary);
+    border: 1px solid var(--border-subtle);
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: var(--transition-base);
+    z-index: 10;
+}
+
+.app-card:hover .edit-btn {
+    opacity: 1;
+}
+
+.edit-btn:hover {
+    background: var(--accent-primary);
     color: var(--card-bg);
     transform: scale(1.1);
 }

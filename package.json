@@ -1,6 +1,6 @@
 {
     "name": "hub-interface",
-    "version": "1.0.2",
+    "version": "1.6.7",
     "description": "Kiosk Hub Interface",
     "author": "Nexus Team",
     "main": "src/main/main.js",
@@ -19,11 +19,14 @@
         "directories": {
             "output": "dist_build"
         },
+        "files": [
+            "src/**/*",
+            "node_modules/**/*",
+            "package.json"
+        ],
+        "asar": false,
         "win": {
-            "target": [
-                "nsis",
-                "portable"
-            ],
+            "target": "nsis",
             "signAndEditExecutable": false
         },
         "nsis": {
@@ -37,6 +40,7 @@
         }
     },
     "dependencies": {
-        "electron-updater": "^6.7.3"
+        "electron-updater": "^6.7.3",
+        "firebase": "^12.8.0"
     }
 }

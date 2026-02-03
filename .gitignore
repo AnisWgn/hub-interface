@@ -1,0 +1,6 @@
+.env
+node_modules
+dist
+dist_pack
+dist_build
+data

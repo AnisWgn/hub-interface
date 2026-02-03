@@ -32,39 +32,86 @@ themeToggle.addEventListener('click', () => {
     setTheme(currentTheme);
 });
 
-// Initial apps data - Now synced via Firebase + LocalStorage Backup
-let apps = JSON.parse(localStorage.getItem('kiosk-apps')) || [];
+// Initial apps data - Firebase Only (centralized storage)
+let apps = [];
 
-// Listen for changes in Firebase
-appsRef.on('value', (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-        apps = data;
-        localStorage.setItem('kiosk-apps', JSON.stringify(apps));
-    } else if (apps.length === 0) {
-        // Default data if everything is empty
-        apps = [
-            {
-                name: 'Digiteq E-School',
-                url: 'https://digiteq-e-school.netlify.app/',
-                image: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8?auto=format&fit=crop&q=80&w=400'
-            }
-        ];
+// Firebase Connection Status Indicator
+const firebaseStatus = document.getElementById('firebase-status');
+
+// DEBUG: Track Firebase initialization
+console.log("Renderer initialized. Checking Firebase...");
+if (typeof firebase === 'undefined') {
+    console.error("FATAL: Firebase SDK not loaded! Check index.html script tags and paths.");
+} else {
+    console.log("Firebase SDK detected.");
+}
+
+function updateConnectionStatus(status) {
+    console.log(`Connection Status Update: ${status}`);
+    firebaseStatus.classList.remove('connecting', 'connected', 'error');
+    switch (status) {
+        case 'connected':
+            firebaseStatus.classList.add('connected');
+            firebaseStatus.textContent = '✓ Connecté';
+            firebaseStatus.title = 'Firebase connecté';
+            break;
+        case 'error':
+            firebaseStatus.classList.add('error');
+            firebaseStatus.textContent = '✗ Hors ligne';
+            firebaseStatus.title = 'Erreur de connexion Firebase (Timeout ou Script fail)';
+            break;
+        default:
+            firebaseStatus.classList.add('connecting');
+            firebaseStatus.textContent = '⏳ Connexion...';
+            firebaseStatus.title = 'Connexion à Firebase en cours...';
     }
-    // Keep current search filter if user is typing
-    const currentFilter = searchInput ? searchInput.value : '';
-    renderApps(currentFilter);
-});
+}
+
+// Connection check timeout
+const connectionTimeout = setTimeout(() => {
+    if (!firebaseStatus.classList.contains('connected')) {
+        console.warn("Firebase connection timeout after 10s.");
+        updateConnectionStatus('error');
+    }
+}, 10000);
+
+// Listen for changes in Realtime Database (real-time sync)
+if (typeof appsRef !== 'undefined') {
+    appsRef.on('value', (snapshot) => {
+        clearTimeout(connectionTimeout);
+        updateConnectionStatus('connected');
+        const data = snapshot.val();
+        if (data) {
+            apps = data;
+        } else {
+            console.log("Realtime Database empty, initializing default data...");
+            apps = [
+                {
+                    name: 'Digiteq E-School',
+                    url: 'https://digiteq-e-school.netlify.app/',
+                    image: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8?auto=format&fit=crop&q=80&w=400'
+                }
+            ];
+            appsRef.set(apps);
+        }
+        const currentFilter = searchInput ? searchInput.value : '';
+        renderApps(currentFilter);
+    }, (error) => {
+        console.error("Realtime Database Sync Error:", error);
+        updateConnectionStatus('error');
+    });
+} else {
+    console.error("appsRef is not defined. Check firebase-config.js.");
+    updateConnectionStatus('error');
+}
 
 function saveApps() {
-    // Save to LocalStorage immediately for instant persistence
-    localStorage.setItem('kiosk-apps', JSON.stringify(apps));
-
-    // Sync to Firebase
-    appsRef.set(apps).catch(err => {
-        console.error("Firebase Sync Error:", err);
-        // We don't alert here to avoid annoying the user if they're offline, 
-        // since it's already saved locally.
+    appsRef.set(apps).then(() => {
+        updateConnectionStatus('connected');
+    }).catch(err => {
+        console.error("Realtime Database Sync Error:", err);
+        updateConnectionStatus('error');
+        alert("Erreur de synchronisation. Vérifiez votre connexion internet.");
     });
 }
 
@@ -112,12 +159,20 @@ function renderApps(filter = '') {
             <div class="app-info">
                 <div class="app-name">${app.name}</div>
             </div>
-            <button class="delete-btn" data-index="${originalIndex}">×</button>
+            <button class="edit-btn" data-index="${originalIndex}" title="Modifier">✎</button>
+            <button class="delete-btn" data-index="${originalIndex}" title="Supprimer">×</button>
         `;
 
         appCard.addEventListener('click', (e) => {
-            if (e.target.classList.contains('delete-btn')) return;
+            if (e.target.classList.contains('delete-btn') || e.target.classList.contains('edit-btn')) return;
             showChoiceModal(app);
+        });
+
+        // Add edit functionality
+        const editBtn = appCard.querySelector('.edit-btn');
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openEditModal(originalIndex);
         });
 
         // Add delete functionality
@@ -164,13 +219,34 @@ searchInput.addEventListener('input', (e) => {
 });
 
 // Modal handling
+let editingIndex = null; // Track if we're editing an app
+
 addAppCard.addEventListener('click', () => {
+    editingIndex = null; // Reset - we're adding, not editing
+    document.querySelector('#add-modal h2').textContent = 'Nouvelle Application';
     addModal.classList.add('active');
 });
+
+function openEditModal(index) {
+    editingIndex = index;
+    const app = apps[index];
+
+    // Pre-fill the form
+    document.getElementById('app-name').value = app.name || '';
+    document.getElementById('app-url').value = app.url || '';
+    document.getElementById('app-image').value = app.image || '';
+    document.getElementById('app-guide').value = app.guide || '';
+
+    // Update modal title
+    document.querySelector('#add-modal h2').textContent = 'Modifier l\'Application';
+
+    addModal.classList.add('active');
+}
 
 cancelBtn.addEventListener('click', () => {
     addModal.classList.remove('active');
     addAppForm.reset();
+    editingIndex = null;
 });
 
 const choiceModal = document.getElementById('choice-modal');
@@ -206,7 +282,13 @@ launchAppBtn.addEventListener('click', () => {
 
 openGuideBtn.addEventListener('click', () => {
     if (currentActiveApp && currentActiveApp.guide && !openGuideBtn.classList.contains('disabled')) {
-        ipcRenderer.send('open-guide', currentActiveApp.guide);
+        ipcRenderer.send('open-external-link', currentActiveApp.guide);
+        choiceModal.classList.remove('active');
+    }
+});
+
+choiceModal.addEventListener('click', (e) => {
+    if (e.target === choiceModal) {
         choiceModal.classList.remove('active');
     }
 });
@@ -222,11 +304,19 @@ addAppForm.addEventListener('submit', (e) => {
     const image = document.getElementById('app-image').value;
     const guide = document.getElementById('app-guide').value;
 
-    apps.push({ name, url, image, guide });
+    if (editingIndex !== null) {
+        // Edit existing app
+        apps[editingIndex] = { name, url, image, guide };
+    } else {
+        // Add new app
+        apps.push({ name, url, image, guide });
+    }
+
     saveApps();
 
     addModal.classList.remove('active');
     addAppForm.reset();
+    editingIndex = null;
 });
 
 // Window controls
