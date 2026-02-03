@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Hub</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Firebase SDK (Version 8) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="../config/firebase-config.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-text">NEXUS <span class="highlight">HUB</span></span>
+                </div>
+                <div class="controls">
+                    <button id="theme-toggle" class="win-control" title="Changer de thème">🌙</button>
+                    <button id="minimize-btn" class="win-control">−</button>
+                    <button id="maximize-btn" class="win-control">▢</button>
+                    <button id="close-btn" class="win-control">×</button>
+                </div>
+            </div>
+            <h1>Applications Kiosque</h1>
+            <p>Accédez à vos applications en un clic</p>
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="Rechercher une application..."
+                    aria-label="Rechercher">
+            </div>
+        </header>
+
+        <main>
+            <div id="apps-grid" class="apps-grid">
+                <!-- Apps will be injected here -->
+                <button id="add-app-card" class="app-card add-card">
+                    <div class="add-icon">+</div>
+                    <div class="add-text">Ajouter une application</div>
+                </button>
+            </div>
+            <div id="pagination" class="pagination"></div>
+        </main>
+
+        <!-- Modal for adding an app -->
+        <div id="add-modal" class="modal">
+            <div class="modal-content">
+                <h2>Nouvelle Application</h2>
+                <form id="add-app-form">
+                    <div class="form-group">
+                        <label for="app-name">Nom de l'application</label>
+                        <input type="text" id="app-name" required placeholder="Ex: E-School">
+                    </div>
+                    <div class="form-group">
+                        <label for="app-url">URL de l'application</label>
+                        <input type="url" id="app-url" required placeholder="https://...">
+                    </div>
+                    <div class="form-group">
+                        <label for="app-image">URL de l'image (ou laisser vide pour défaut)</label>
+                        <input type="text" id="app-image" placeholder="https://...">
+                    </div>
+                    <div class="form-group">
+                        <label for="app-guide">URL du Guide PDF (Optionnel)</label>
+                        <input type="text" id="app-guide" placeholder="https://... ou chemin/vers/guide.pdf">
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" id="cancel-btn" class="secondary-btn">Annuler</button>
+                        <button type="submit" class="primary-btn">Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Choice Modal -->
+        <div id="choice-modal" class="modal">
+            <div class="modal-content bento-choice">
+                <h2>Que voulez-vous faire ?</h2>
+                <p id="choice-app-name" style="margin-bottom: 24px; font-weight: 600; color: var(--accent-primary);">
+                </p>
+                <div class="choice-grid">
+                    <button id="launch-app-btn" class="choice-card launch">
+                        <div class="choice-icon">🚀</div>
+                        <div class="choice-label">Lancer l'Application</div>
+                    </button>
+                    <button id="open-guide-btn" class="choice-card guide">
+                        <div class="choice-icon">📑</div>
+                        <div class="choice-label">Voir le Guide</div>
+                    </button>
+                </div>
+                <div class="modal-actions" style="justify-content: center; margin-top: 24px;">
+                    <button id="close-choice-btn" class="secondary-btn">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,34 @@
+{
+    "name": "hub-interface",
+    "version": "1.0.0",
+    "description": "Kiosk Hub Interface",
+    "author": "Nexus Team",
+    "main": "src/main/main.js",
+    "scripts": {
+        "start": "electron .",
+        "dev": "electron .",
+        "build": "electron-builder"
+    },
+    "devDependencies": {
+        "electron": "^28.0.0",
+        "electron-builder": "^26.4.0"
+    },
+    "build": {
+        "appId": "com.digiteq.hub",
+        "productName": "Nexus Hub",
+        "directories": {
+            "output": "dist_build"
+        },
+        "win": {
+            "target": "nsis"
+        },
+        "publish": {
+            "provider": "github",
+            "owner": "AnisWgn",
+            "repo": "hub-interface"
+        }
+    },
+    "dependencies": {
+        "electron-updater": "^6.7.3"
+    }
+}
