@@ -1,6 +1,6 @@
 {
     "name": "hub-interface",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Kiosk Hub Interface",
     "author": "Nexus Team",
     "main": "src/main/main.js",
@@ -20,7 +20,15 @@
             "output": "dist_build"
         },
         "win": {
-            "target": "nsis"
+            "target": [
+                "nsis",
+                "portable"
+            ],
+            "signAndEditExecutable": false
+        },
+        "nsis": {
+            "oneClick": true,
+            "allowToChangeInstallationDirectory": false
         },
         "publish": {
             "provider": "github",
