@@ -103,7 +103,7 @@ function saveApps() {
 const searchInput = document.getElementById('search-input');
 const paginationContainer = document.getElementById('pagination');
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 6;
 let currentPage = 1;
 
 function renderApps(filter = '') {

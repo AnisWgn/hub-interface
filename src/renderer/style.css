@@ -206,16 +206,16 @@ header {
 }
 
 h1 {
-    font-size: 2.5rem;
+    font-size: 3.5rem;
     font-weight: 800;
-    margin-bottom: 4px;
+    margin-bottom: 8px;
     color: var(--text-primary);
     letter-spacing: -1px;
 }
 
 header p {
     color: var(--text-secondary);
-    font-size: 1.05rem;
+    font-size: 1.5rem;
     font-weight: 500;
 }
 
@@ -231,10 +231,10 @@ header p {
     background: #ffffff;
     border: var(--border-strong);
     border-radius: var(--bento-radius-small);
-    padding: 12px 20px;
+    padding: 18px 25px;
     color: var(--text-primary);
     font-family: inherit;
-    font-size: 1rem;
+    font-size: 1.2rem;
     outline: none;
     transition: var(--transition-base);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
@@ -268,7 +268,7 @@ main::-webkit-scrollbar-thumb {
 
 .apps-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: var(--grid-gap);
     padding-bottom: 40px;
 }
@@ -322,18 +322,18 @@ main::-webkit-scrollbar-thumb {
 
 .app-name {
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: 1.4rem;
     color: #FFFFFF;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .app-category {
-    font-size: 0.7rem;
+    font-size: 0.9rem;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 1px;
     color: var(--accent-primary);
-    margin-bottom: 2px;
+    margin-bottom: 4px;
 }
 
 .add-card {
@@ -342,6 +342,9 @@ main::-webkit-scrollbar-thumb {
     align-items: center;
     border: 2px dashed var(--border-strong);
     box-shadow: none;
+    grid-column: span 2;
+    aspect-ratio: auto;
+    min-height: 180px;
 }
 
 .add-card:hover {
@@ -364,7 +367,7 @@ main::-webkit-scrollbar-thumb {
 .add-text {
     color: var(--text-secondary);
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 1.2rem;
 }
 
 /* Pagination */
