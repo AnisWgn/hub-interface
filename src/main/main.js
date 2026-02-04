@@ -3,10 +3,15 @@ const path = require('path');
 const { exec } = require('child_process');
 const fs = require('fs');
 
-// Auto-update reactivated
-const { autoUpdater } = require('electron-updater');
-autoUpdater.autoDownload = true;
-autoUpdater.autoInstallOnAppQuit = true;
+// Auto-update (optionnel : ne pas crasher si le module n'est pas bundlé)
+let autoUpdater = null;
+try {
+    autoUpdater = require('electron-updater').autoUpdater;
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+} catch (e) {
+    console.warn('electron-updater non disponible, désactivation de l\'auto-update:', e.message);
+}
 
 // Fix for "Unable to move the cache: Access Denied (0x5)"
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
@@ -36,6 +41,7 @@ if (!gotTheLock) {
         mainWindow = new BrowserWindow({
             width: 1200,
             height: 800,
+            icon: path.join(app.getAppPath(), 'build', 'icon.ico'),
             webPreferences: {
                 nodeIntegration: true,
                 contextIsolation: false, // For simplicity in this hub app
@@ -81,34 +87,36 @@ if (!gotTheLock) {
 
     app.whenReady().then(() => {
         createWindow();
-        autoUpdater.checkForUpdatesAndNotify();
+        if (autoUpdater) autoUpdater.checkForUpdatesAndNotify();
     });
 
     // Auto Updater Events
-    autoUpdater.on('update-available', (info) => {
-        console.log('Update available:', info.version);
-        if (mainWindow) {
-            mainWindow.webContents.send('update-status', { status: 'downloading', version: info.version });
-        }
-    });
-
-    autoUpdater.on('update-downloaded', (info) => {
-        console.log('Update downloaded:', info.version);
-        dialog.showMessageBox(mainWindow, {
-            type: 'info',
-            title: 'Mise à jour disponible',
-            message: `La version ${info.version} a été téléchargée. L'application va redémarrer pour installer la mise à jour.`,
-            buttons: ['Redémarrer maintenant', 'Plus tard']
-        }).then((result) => {
-            if (result.response === 0) {
-                autoUpdater.quitAndInstall();
+    if (autoUpdater) {
+        autoUpdater.on('update-available', (info) => {
+            console.log('Update available:', info.version);
+            if (mainWindow) {
+                mainWindow.webContents.send('update-status', { status: 'downloading', version: info.version });
             }
         });
-    });
 
-    autoUpdater.on('error', (err) => {
-        console.error('Auto-updater error:', err);
-    });
+        autoUpdater.on('update-downloaded', (info) => {
+            console.log('Update downloaded:', info.version);
+            dialog.showMessageBox(mainWindow, {
+                type: 'info',
+                title: 'Mise à jour disponible',
+                message: `La version ${info.version} a été téléchargée. L'application va redémarrer pour installer la mise à jour.`,
+                buttons: ['Redémarrer maintenant', 'Plus tard']
+            }).then((result) => {
+                if (result.response === 0) {
+                    autoUpdater.quitAndInstall();
+                }
+            });
+        });
+
+        autoUpdater.on('error', (err) => {
+            console.error('Auto-updater error:', err);
+        });
+    }
 
     app.on('window-all-closed', () => {
         if (process.platform !== 'darwin') {

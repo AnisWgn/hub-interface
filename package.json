@@ -1,6 +1,7 @@
 {
     "name": "hub-interface",
     "version": "1.7.2",
+    "packageManager": "traversal",
     "description": "Kiosk Hub Interface",
     "author": "Nexus Team",
     "main": "src/main/main.js",
@@ -10,7 +11,7 @@
         "build": "electron-builder"
     },
     "devDependencies": {
-        "electron": "^28.0.0",
+        "electron": "^40.1.0",
         "electron-builder": "^26.4.0"
     },
     "build": {
@@ -21,6 +22,7 @@
         },
         "files": [
             "src/**/*",
+            "build/**/*",
             "node_modules/**/*",
             "package.json"
         ],
