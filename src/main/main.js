@@ -3,11 +3,10 @@ const path = require('path');
 const { exec } = require('child_process');
 const fs = require('fs');
 
-// Auto-update temporarily disabled due to bundling issues
-// To re-enable: npm install electron-updater and uncomment below
-// const { autoUpdater } = require('electron-updater');
-// autoUpdater.autoDownload = true;
-// autoUpdater.autoInstallOnAppQuit = true;
+// Auto-update reactivated
+const { autoUpdater } = require('electron-updater');
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = true;
 
 // Fix for "Unable to move the cache: Access Denied (0x5)"
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
@@ -82,13 +81,10 @@ if (!gotTheLock) {
 
     app.whenReady().then(() => {
         createWindow();
-
-        // Auto-update disabled - check commented out
-        // autoUpdater.checkForUpdatesAndNotify();
+        autoUpdater.checkForUpdatesAndNotify();
     });
 
-    // Auto Updater Events - Disabled
-    /*
+    // Auto Updater Events
     autoUpdater.on('update-available', (info) => {
         console.log('Update available:', info.version);
         if (mainWindow) {
@@ -113,7 +109,6 @@ if (!gotTheLock) {
     autoUpdater.on('error', (err) => {
         console.error('Auto-updater error:', err);
     });
-    */
 
     app.on('window-all-closed', () => {
         if (process.platform !== 'darwin') {
@@ -130,19 +125,21 @@ if (!gotTheLock) {
     ipcMain.on('launch-app', (event, url) => {
         console.log(`Launching app with URL: ${url}`);
 
+        const tempUserData = path.join(app.getPath('temp'), `hub-kiosk-${Date.now()}`);
         const psScript = `
 $url = "${url}"
+$userData = "${tempUserData}"
 $chromePath = "\${env:ProgramFiles(x86)}\\Google\\Chrome\\Application\\chrome.exe"
 if (-not (Test-Path $chromePath)) {
     $chromePath = "\${env:ProgramFiles}\\Google\\Chrome\\Application\\chrome.exe"
 }
 
-$arguments = "--kiosk \`"$url\`" --disable-pinch --overscroll-history-navigation=0 --disable-notifications --no-first-run --disable-features=TouchpadPinch --force-device-scale-factor=1"
+$arguments = "--kiosk \`"$url\`" --user-data-dir=\`"$userData\`" --new-window --incognito --disable-pinch --overscroll-history-navigation=0 --disable-notifications --no-first-run --disable-features=TouchpadPinch --force-device-scale-factor=1"
 
 if (Test-Path $chromePath) {
     Start-Process -FilePath $chromePath -ArgumentList $arguments
 } else {
-    Start-Process "msedge.exe" -ArgumentList "--kiosk $url --edge-kiosk-type=fullscreen"
+    Start-Process "msedge.exe" -ArgumentList "--kiosk $url --edge-kiosk-type=fullscreen --user-data-dir=$userData --inprivate"
 }
   `;
 

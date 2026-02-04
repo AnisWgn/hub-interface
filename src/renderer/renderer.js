@@ -48,23 +48,8 @@ if (typeof firebase === 'undefined') {
 
 function updateConnectionStatus(status) {
     console.log(`Connection Status Update: ${status}`);
-    firebaseStatus.classList.remove('connecting', 'connected', 'error');
-    switch (status) {
-        case 'connected':
-            firebaseStatus.classList.add('connected');
-            firebaseStatus.textContent = '✓ Connecté';
-            firebaseStatus.title = 'Firebase connecté';
-            break;
-        case 'error':
-            firebaseStatus.classList.add('error');
-            firebaseStatus.textContent = '✗ Hors ligne';
-            firebaseStatus.title = 'Erreur de connexion Firebase (Timeout ou Script fail)';
-            break;
-        default:
-            firebaseStatus.classList.add('connecting');
-            firebaseStatus.textContent = '⏳ Connexion...';
-            firebaseStatus.title = 'Connexion à Firebase en cours...';
-    }
+    firebaseStatus.className = ''; // Reset
+    firebaseStatus.classList.add(status || 'connecting');
 }
 
 // Connection check timeout
@@ -146,18 +131,23 @@ function renderApps(filter = '') {
     const pagedApps = filteredApps.slice(startIndex, endIndex);
 
     pagedApps.forEach((app, index) => {
-        // Find the original index in the 'apps' array for deletion
         const originalIndex = apps.indexOf(app);
 
         const appCard = document.createElement('div');
-        appCard.className = 'app-card';
-        // Add staggered animation delay
-        appCard.style.animationDelay = `${index * 0.1}s`;
+        // Use a deterministic pseudo-random based on name to avoid flickering
+        const randomType = (app.name.length % 7 === 0) ? 'card-wide' :
+            (app.name.length % 5 === 0) ? 'card-tall' : '';
+
+        appCard.className = `app-card ${randomType}`;
+        appCard.style.animationDelay = `${index * 0.05}s`;
 
         appCard.innerHTML = `
             <img src="${app.image || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=400'}" class="app-image" alt="${app.name}">
             <div class="app-info">
-                <div class="app-name">${app.name}</div>
+                <div>
+                    <div class="app-category">Application</div>
+                    <div class="app-name">${app.name}</div>
+                </div>
             </div>
             <button class="edit-btn" data-index="${originalIndex}" title="Modifier">✎</button>
             <button class="delete-btn" data-index="${originalIndex}" title="Supprimer">×</button>
@@ -182,7 +172,6 @@ function renderApps(filter = '') {
             if (confirm(`Supprimer ${app.name} ?`)) {
                 apps.splice(originalIndex, 1);
                 saveApps();
-                // renderApps() will be called automatically by the firebase listener
             }
         });
 
