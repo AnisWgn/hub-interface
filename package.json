@@ -1,6 +1,6 @@
 {
     "name": "hub-interface",
-    "version": "1.6.7",
+    "version": "1.6.9",
     "description": "Kiosk Hub Interface",
     "author": "Nexus Team",
     "main": "src/main/main.js",
@@ -35,8 +35,7 @@
         },
         "publish": {
             "provider": "github",
-            "owner": "AnisWgn",
-            "repo": "hub-interface"
+            "releaseType": "release"
         }
     },
     "dependencies": {
