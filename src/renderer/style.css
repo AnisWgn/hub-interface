@@ -298,23 +298,30 @@ main::-webkit-scrollbar-thumb {
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 24px 20px;
-    background: linear-gradient(to top, rgba(244, 243, 242, 0.98), rgba(244, 243, 242, 0.85));
-    backdrop-filter: blur(12px);
-    border-top: 1px solid rgba(200, 199, 198, 0.5);
-    transform: translateY(100%);
+    padding: 16px 14px;
+    background: linear-gradient(to top, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.4));
+    backdrop-filter: blur(4px);
     transition: var(--transition-base);
-}
-
-.app-card:hover .app-info {
-    transform: translateY(0);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 35%;
 }
 
 .app-name {
     font-weight: 700;
-    font-size: 1rem;
-    color: var(--text-primary);
-    text-align: center;
+    font-size: 0.95rem;
+    color: #FFFFFF;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.app-category {
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent-primary);
+    margin-bottom: 2px;
 }
 
 .add-card {
@@ -497,64 +504,41 @@ main::-webkit-scrollbar-thumb {
     border-color: #cbd5e1;
 }
 
-.delete-btn {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    background: var(--card-bg);
-    color: #ef4444;
-    border: 1px solid var(--border-subtle);
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
-    font-size: 1.2rem;
+/* Management Actions in Modal */
+.manage-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.manage-btn {
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    padding: 8px 16px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
     cursor: pointer;
+    transition: var(--transition-base);
     display: flex;
     align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: var(--transition-base);
-    z-index: 10;
+    gap: 8px;
+    color: var(--text-secondary);
 }
 
-.app-card:hover .delete-btn {
-    opacity: 1;
+.manage-btn:hover {
+    background: var(--bg-main);
+    color: var(--text-primary);
+    border-color: var(--accent-primary);
 }
 
-.delete-btn:hover {
-    background: #ef4444;
-    color: var(--card-bg);
-    transform: scale(1.1);
-}
-
-.edit-btn {
-    position: absolute;
-    top: 12px;
-    right: 52px;
-    background: var(--card-bg);
-    color: var(--accent-primary);
-    border: 1px solid var(--border-subtle);
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
-    font-size: 1rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: var(--transition-base);
-    z-index: 10;
-}
-
-.app-card:hover .edit-btn {
-    opacity: 1;
-}
-
-.edit-btn:hover {
-    background: var(--accent-primary);
-    color: var(--card-bg);
-    transform: scale(1.1);
+.manage-btn.delete:hover {
+    border-color: var(--accent-secondary);
+    color: var(--accent-secondary);
+    background: rgba(225, 29, 72, 0.1);
 }
 
 /* Choice Modal specific */

@@ -144,35 +144,13 @@ function renderApps(filter = '') {
         appCard.innerHTML = `
             <img src="${app.image || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=400'}" class="app-image" alt="${app.name}">
             <div class="app-info">
-                <div>
-                    <div class="app-category">Application</div>
-                    <div class="app-name">${app.name}</div>
-                </div>
+                <div class="app-category">Application</div>
+                <div class="app-name">${app.name}</div>
             </div>
-            <button class="edit-btn" data-index="${originalIndex}" title="Modifier">✎</button>
-            <button class="delete-btn" data-index="${originalIndex}" title="Supprimer">×</button>
         `;
 
-        appCard.addEventListener('click', (e) => {
-            if (e.target.classList.contains('delete-btn') || e.target.classList.contains('edit-btn')) return;
+        appCard.addEventListener('click', () => {
             showChoiceModal(app);
-        });
-
-        // Add edit functionality
-        const editBtn = appCard.querySelector('.edit-btn');
-        editBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            openEditModal(originalIndex);
-        });
-
-        // Add delete functionality
-        const deleteBtn = appCard.querySelector('.delete-btn');
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (confirm(`Supprimer ${app.name} ?`)) {
-                apps.splice(originalIndex, 1);
-                saveApps();
-            }
         });
 
         appsGrid.insertBefore(appCard, addAppCard);
@@ -242,6 +220,8 @@ const choiceModal = document.getElementById('choice-modal');
 const choiceAppName = document.getElementById('choice-app-name');
 const launchAppBtn = document.getElementById('launch-app-btn');
 const openGuideBtn = document.getElementById('open-guide-btn');
+const editAppBtn = document.getElementById('edit-app-btn');
+const deleteAppBtn = document.getElementById('delete-app-btn');
 const closeChoiceBtn = document.getElementById('close-choice-btn');
 
 let currentActiveApp = null;
@@ -273,6 +253,25 @@ openGuideBtn.addEventListener('click', () => {
     if (currentActiveApp && currentActiveApp.guide && !openGuideBtn.classList.contains('disabled')) {
         ipcRenderer.send('open-external-link', currentActiveApp.guide);
         choiceModal.classList.remove('active');
+    }
+});
+
+editAppBtn.addEventListener('click', () => {
+    if (currentActiveApp) {
+        const index = apps.indexOf(currentActiveApp);
+        choiceModal.classList.remove('active');
+        openEditModal(index);
+    }
+});
+
+deleteAppBtn.addEventListener('click', () => {
+    if (currentActiveApp) {
+        const index = apps.indexOf(currentActiveApp);
+        if (confirm(`Supprimer ${currentActiveApp.name} ?`)) {
+            apps.splice(index, 1);
+            saveApps();
+            choiceModal.classList.remove('active');
+        }
     }
 });
 

@@ -1,6 +1,6 @@
 {
     "name": "hub-interface",
-    "version": "1.7.2",
+    "version": "1.7.3",
     "packageManager": "traversal",
     "description": "Kiosk Hub Interface",
     "author": "Nexus Team",
@@ -22,7 +22,6 @@
         },
         "files": [
             "src/**/*",
-            "build/**/*",
             "node_modules/**/*",
             "package.json"
         ],
