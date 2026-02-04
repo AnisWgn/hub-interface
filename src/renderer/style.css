@@ -42,7 +42,19 @@ body.dark .app-info {
 }
 
 body.dark #search-input {
-    background: #020617;
+    background: #1e293b;
+    color: var(--text-primary);
+}
+
+body.dark .form-group input {
+    background: #1e293b;
+    border-color: #334155;
+    color: var(--text-primary);
+}
+
+body.dark .form-group input:focus {
+    background: #0f172a;
+    border-color: var(--accent-primary);
 }
 
 body.dark .choice-card.launch:hover {
