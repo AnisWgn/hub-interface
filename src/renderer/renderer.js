@@ -9,29 +9,6 @@ const closeBtn = document.getElementById('close-btn');
 const maximizeBtn = document.getElementById('maximize-btn');
 const minimizeBtn = document.getElementById('minimize-btn');
 
-// Theme handling
-const themeToggle = document.getElementById('theme-toggle');
-
-function setTheme(theme) {
-    if (theme === 'dark') {
-        document.body.classList.add('dark');
-        themeToggle.textContent = '☀️';
-    } else {
-        document.body.classList.remove('dark');
-        themeToggle.textContent = '🌙';
-    }
-    localStorage.setItem('theme', theme);
-}
-
-// Initial theme check
-const savedTheme = localStorage.getItem('theme') || 'light';
-setTheme(savedTheme);
-
-themeToggle.addEventListener('click', () => {
-    const currentTheme = document.body.classList.contains('dark') ? 'light' : 'dark';
-    setTheme(currentTheme);
-});
-
 // Initial apps data - Firebase Only (centralized storage)
 let apps = [];
 
@@ -102,28 +79,43 @@ function saveApps() {
 }
 
 const searchInput = document.getElementById('search-input');
-const categoryFilter = document.getElementById('category-filter');
 const paginationContainer = document.getElementById('pagination');
 
-const ITEMS_PER_PAGE = 6;
+// Custom Dropdown Elements
+const categoryTrigger = document.getElementById('category-trigger');
+const categoryDropdown = document.getElementById('category-dropdown');
+let selectedCategory = ''; // Store the value here instead of select.value
+
+const ITEMS_PER_PAGE = 9;
 let currentPage = 1;
 
 function updateCategoryDropdowns() {
     // Extract unique categories
     const categories = [...new Set(apps.map(app => app.category).filter(c => c && c.trim() !== ''))].sort();
 
-    // Update Main Filter
-    const currentFilter = categoryFilter.value;
-    categoryFilter.innerHTML = '<option value="">Toutes les catégories</option>';
-    categories.forEach(cat => {
-        const option = document.createElement('option');
-        option.value = cat;
-        option.textContent = cat;
-        categoryFilter.appendChild(option);
-    });
-    categoryFilter.value = currentFilter;
+    // --- Update Custom Main Filter ---
+    categoryDropdown.innerHTML = '';
 
-    // Update Modal Autocomplete List
+    // Add "All" option
+    const allOption = document.createElement('div');
+    allOption.className = 'select-item same-as-selected'; // Default selected
+    allOption.textContent = 'Toutes les catégories';
+    allOption.addEventListener('click', () => {
+        selectCategory('', 'Toutes les catégories', allOption);
+    });
+    categoryDropdown.appendChild(allOption);
+
+    categories.forEach(cat => {
+        const option = document.createElement('div');
+        option.className = 'select-item';
+        option.textContent = cat;
+        option.addEventListener('click', () => {
+            selectCategory(cat, cat, option);
+        });
+        categoryDropdown.appendChild(option);
+    });
+
+    // --- Update Modal Autocomplete List (Native datalist remains) ---
     const categoryList = document.getElementById('category-list');
     categoryList.innerHTML = '';
     categories.forEach(cat => {
@@ -133,9 +125,46 @@ function updateCategoryDropdowns() {
     });
 }
 
+function selectCategory(value, displayText, itemElement) {
+    selectedCategory = value;
+    categoryTrigger.textContent = displayText;
+
+    // Update visual selection state
+    const items = categoryDropdown.getElementsByClassName('select-item');
+    for (let i = 0; i < items.length; i++) {
+        items[i].classList.remove('same-as-selected');
+    }
+    itemElement.classList.add('same-as-selected');
+
+    // Close dropdown
+    categoryDropdown.classList.remove('select-show');
+    categoryTrigger.classList.remove('select-arrow-active');
+
+    // Trigger render
+    currentPage = 1;
+    renderApps();
+}
+
+// Toggle Dropdown
+categoryTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    categoryDropdown.classList.toggle('select-show');
+    categoryTrigger.classList.toggle('select-arrow-active');
+});
+
+// Close when clicking outside
+document.addEventListener('click', (e) => {
+    if (!categoryTrigger.contains(e.target)) {
+        categoryDropdown.classList.remove('select-show');
+        categoryTrigger.classList.remove('select-arrow-active');
+    }
+});
+
 function renderApps() {
     const filterText = searchInput.value.toLowerCase();
-    const filterCategory = categoryFilter.value;
+
+    // Use selectedCategory variable instead of filter.value
+    const filterCategory = selectedCategory;
 
     // Remove all existing app cards except the "Add" card
     const existingCards = document.querySelectorAll('.app-card:not(.add-card)');
@@ -226,11 +255,8 @@ searchInput.addEventListener('input', (e) => {
     renderApps();
 });
 
-// Category Filter handling
-categoryFilter.addEventListener('change', (e) => {
-    currentPage = 1;
-    renderApps();
-});
+// Category Filter handling is now done via custom click events
+// categoryFilter.addEventListener('change', ...) Removed
 
 // Modal handling
 let editingIndex = null; // Track if we're editing an app
@@ -250,6 +276,7 @@ function openEditModal(index) {
     document.getElementById('app-url').value = app.url || '';
     document.getElementById('app-image').value = app.image || '';
     document.getElementById('app-guide').value = app.guide || '';
+    document.getElementById('app-github').value = app.github || '';
 
     // Update modal title
     document.querySelector('#add-modal h2').textContent = 'Modifier l\'Application';
@@ -293,6 +320,7 @@ const choiceModal = document.getElementById('choice-modal');
 const choiceAppName = document.getElementById('choice-app-name');
 const launchAppBtn = document.getElementById('launch-app-btn');
 const openGuideBtn = document.getElementById('open-guide-btn');
+const openGithubBtn = document.getElementById('open-github-btn');
 const editAppBtn = document.getElementById('edit-app-btn');
 const deleteAppBtn = document.getElementById('delete-app-btn');
 const closeChoiceBtn = document.getElementById('close-choice-btn');
@@ -312,6 +340,15 @@ function showChoiceModal(app) {
         openGuideBtn.title = "Aucun guide disponible pour cette application";
     }
 
+    // Enable/Disable GitHub button based on availability
+    if (app.github) {
+        openGithubBtn.classList.remove('disabled');
+        openGithubBtn.title = "";
+    } else {
+        openGithubBtn.classList.add('disabled');
+        openGithubBtn.title = "Aucun dépôt GitHub pour cette application";
+    }
+
     choiceModal.classList.add('active');
 }
 
@@ -325,6 +362,13 @@ launchAppBtn.addEventListener('click', () => {
 openGuideBtn.addEventListener('click', () => {
     if (currentActiveApp && currentActiveApp.guide && !openGuideBtn.classList.contains('disabled')) {
         ipcRenderer.send('open-external-link', currentActiveApp.guide);
+        choiceModal.classList.remove('active');
+    }
+});
+
+openGithubBtn.addEventListener('click', () => {
+    if (currentActiveApp && currentActiveApp.github && !openGithubBtn.classList.contains('disabled')) {
+        ipcRenderer.send('open-external-link', currentActiveApp.github);
         choiceModal.classList.remove('active');
     }
 });
@@ -364,14 +408,15 @@ addAppForm.addEventListener('submit', (e) => {
     const url = document.getElementById('app-url').value;
     const image = document.getElementById('app-image').value;
     const guide = document.getElementById('app-guide').value;
+    const github = document.getElementById('app-github').value;
     const category = document.getElementById('app-category').value;
 
     if (editingIndex !== null) {
         // Edit existing app
-        apps[editingIndex] = { name, url, image, guide, category };
+        apps[editingIndex] = { name, url, image, guide, github, category };
     } else {
         // Add new app
-        apps.push({ name, url, image, guide, category });
+        apps.push({ name, url, image, guide, github, category });
     }
 
     saveApps();

@@ -47,7 +47,6 @@
                     <span id="firebase-status" class="connection-status connecting" title="Connexion Firebase">⏳</span>
                 </div>
                 <div class="controls">
-                    <button id="theme-toggle" class="win-control" title="Changer de thème">🌙</button>
                     <button id="minimize-btn" class="win-control">−</button>
                     <button id="maximize-btn" class="win-control">▢</button>
                     <button id="close-btn" class="win-control">×</button>
@@ -56,11 +55,15 @@
             <h1>Applications Kiosque</h1>
             <p>Accédez à vos applications en un clic</p>
             <div class="search-container">
-                <select id="category-filter" aria-label="Filtrer par catégorie">
-                    <option value="">Toutes les catégories</option>
-                </select>
                 <input type="text" id="search-input" placeholder="Rechercher une application..."
                     aria-label="Rechercher">
+
+                <div class="custom-select-container">
+                    <div class="select-selected" id="category-trigger">Toutes les catégories</div>
+                    <div class="select-items" id="category-dropdown">
+                        <!-- Items will be populated by JS -->
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -103,6 +106,10 @@
                         </div>
                     </div>
                     <div class="form-group">
+                        <label for="app-github">GitHub (URL du dépôt)</label>
+                        <input type="url" id="app-github" placeholder="https://github.com/...">
+                    </div>
+                    <div class="form-group">
                         <label for="app-category">Catégorie</label>
                         <input type="text" id="app-category" list="category-list"
                             placeholder="Ex: Restauration, Jeux...">
@@ -130,6 +137,10 @@
                     <button id="open-guide-btn" class="choice-card guide">
                         <div class="choice-icon">📑</div>
                         <div class="choice-label">Voir le Guide</div>
+                    </button>
+                    <button id="open-github-btn" class="choice-card github">
+                        <div class="choice-icon">🐙</div>
+                        <div class="choice-label">Voir le GitHub</div>
                     </button>
                 </div>
                 <div class="manage-actions">

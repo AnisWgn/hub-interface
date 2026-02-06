@@ -155,42 +155,99 @@ if (!gotTheLock) {
             // Inject Back Button
             kioskWindow.webContents.on('dom-ready', () => {
                 const css = `
-                    #nexus-kiosk-back-btn {
+                    #nexus-kiosk-container {
                         position: fixed;
                         top: 20px;
                         right: 20px;
-                        z-index: 2147483647; /* Max Z-Index */
-                        background: rgba(255, 0, 0, 0.8);
+                        z-index: 2147483647;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        font-family: sans-serif;
+                    }
+
+                    #nexus-kiosk-toggle-btn {
+                        background: rgba(0, 0, 0, 0.6);
+                        color: white;
+                        border: 2px solid white;
+                        border-radius: 50%;
+                        width: 32px;
+                        height: 32px;
+                        font-size: 14px;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        transition: all 0.2s;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    }
+
+                    #nexus-kiosk-toggle-btn:hover {
+                        background: rgba(0, 0, 0, 0.8);
+                        transform: scale(1.1);
+                    }
+
+                    #nexus-kiosk-close-btn {
+                        background: rgba(220, 38, 38, 0.9);
                         color: white;
                         border: 2px solid white;
                         border-radius: 50px;
                         padding: 10px 20px;
-                        font-family: sans-serif;
                         font-weight: bold;
                         font-size: 16px;
                         cursor: pointer;
                         box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-                        transition: transform 0.2s, background 0.2s;
-                        text-decoration: none;
+                        transition: all 0.3s ease;
                         display: flex;
                         align-items: center;
                         gap: 8px;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        max-width: 200px;
+                        opacity: 1;
                     }
-                    #nexus-kiosk-back-btn:hover {
-                        transform: scale(1.05);
+
+                    #nexus-kiosk-close-btn:hover {
                         background: rgba(255, 0, 0, 1);
+                        transform: scale(1.05);
+                    }
+
+                    /* Minimized State */
+                    #nexus-kiosk-container.minimized #nexus-kiosk-close-btn {
+                        max-width: 0;
+                        padding: 0;
+                        opacity: 0;
+                        border-width: 0;
+                        margin: 0;
                     }
                 `;
                 kioskWindow.webContents.insertCSS(css);
 
                 const js = `
-                    const btn = document.createElement('button');
-                    btn.id = 'nexus-kiosk-back-btn';
-                    btn.innerHTML = '<span>❌</span> Retour au Hub';
-                    btn.onclick = () => {
-                        window.kioskAPI.close();
+                    const container = document.createElement('div');
+                    container.id = 'nexus-kiosk-container';
+                    
+                    // Toggle Button
+                    const toggleBtn = document.createElement('button');
+                    toggleBtn.id = 'nexus-kiosk-toggle-btn';
+                    toggleBtn.innerHTML = '➖';
+                    toggleBtn.title = 'Réduire/Agrandir';
+                    
+                    // Close Button
+                    const closeBtn = document.createElement('button');
+                    closeBtn.id = 'nexus-kiosk-close-btn';
+                    closeBtn.innerHTML = '<span>❌</span> Retour au Hub';
+                    closeBtn.onclick = () => window.kioskAPI.close();
+                    
+                    // Toggle Logic
+                    toggleBtn.onclick = () => {
+                        const isMinimized = container.classList.toggle('minimized');
+                        toggleBtn.innerHTML = isMinimized ? '➕' : '➖';
                     };
-                    document.body.appendChild(btn);
+
+                    container.appendChild(toggleBtn);
+                    container.appendChild(closeBtn);
+                    document.body.appendChild(container);
                 `;
                 kioskWindow.webContents.executeJavaScript(js);
             });
