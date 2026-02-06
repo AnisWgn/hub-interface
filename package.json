@@ -1,6 +1,6 @@
 {
     "name": "hub-interface",
-    "version": "3.0.0",
+    "version": "3.0.1",
     "packageManager": "traversal",
     "description": "Kiosk Hub Interface",
     "author": "Nexus Team",

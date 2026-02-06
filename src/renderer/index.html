@@ -56,6 +56,9 @@
             <h1>Applications Kiosque</h1>
             <p>Accédez à vos applications en un clic</p>
             <div class="search-container">
+                <select id="category-filter" aria-label="Filtrer par catégorie">
+                    <option value="">Toutes les catégories</option>
+                </select>
                 <input type="text" id="search-input" placeholder="Rechercher une application..."
                     aria-label="Rechercher">
             </div>
@@ -98,6 +101,12 @@
                             <input type="text" id="app-guide" placeholder="https://... ou C:\...">
                             <button type="button" id="browse-guide-btn" class="icon-btn" title="Parcourir">📂</button>
                         </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="app-category">Catégorie</label>
+                        <input type="text" id="app-category" list="category-list"
+                            placeholder="Ex: Restauration, Jeux...">
+                        <datalist id="category-list"></datalist>
                     </div>
                     <div class="modal-actions">
                         <button type="button" id="cancel-btn" class="secondary-btn">Annuler</button>

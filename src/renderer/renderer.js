@@ -74,13 +74,14 @@ if (typeof appsRef !== 'undefined') {
                 {
                     name: 'Digiteq E-School',
                     url: 'https://digiteq-e-school.netlify.app/',
-                    image: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8?auto=format&fit=crop&q=80&w=400'
+                    image: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8?auto=format&fit=crop&q=80&w=400',
+                    category: 'Education'
                 }
             ];
             appsRef.set(apps);
         }
-        const currentFilter = searchInput ? searchInput.value : '';
-        renderApps(currentFilter);
+        updateCategoryDropdowns();
+        renderApps();
     }, (error) => {
         console.error("Realtime Database Sync Error:", error);
         updateConnectionStatus('error');
@@ -101,19 +102,50 @@ function saveApps() {
 }
 
 const searchInput = document.getElementById('search-input');
+const categoryFilter = document.getElementById('category-filter');
 const paginationContainer = document.getElementById('pagination');
 
 const ITEMS_PER_PAGE = 6;
 let currentPage = 1;
 
-function renderApps(filter = '') {
+function updateCategoryDropdowns() {
+    // Extract unique categories
+    const categories = [...new Set(apps.map(app => app.category).filter(c => c && c.trim() !== ''))].sort();
+
+    // Update Main Filter
+    const currentFilter = categoryFilter.value;
+    categoryFilter.innerHTML = '<option value="">Toutes les catégories</option>';
+    categories.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat;
+        option.textContent = cat;
+        categoryFilter.appendChild(option);
+    });
+    categoryFilter.value = currentFilter;
+
+    // Update Modal Autocomplete List
+    const categoryList = document.getElementById('category-list');
+    categoryList.innerHTML = '';
+    categories.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat;
+        categoryList.appendChild(option);
+    });
+}
+
+function renderApps() {
+    const filterText = searchInput.value.toLowerCase();
+    const filterCategory = categoryFilter.value;
+
     // Remove all existing app cards except the "Add" card
     const existingCards = document.querySelectorAll('.app-card:not(.add-card)');
     existingCards.forEach(card => card.remove());
 
-    const filteredApps = apps.filter(app =>
-        app.name.toLowerCase().includes(filter.toLowerCase())
-    );
+    const filteredApps = apps.filter(app => {
+        const matchesSearch = app.name.toLowerCase().includes(filterText);
+        const matchesCategory = filterCategory === '' || app.category === filterCategory;
+        return matchesSearch && matchesCategory;
+    });
 
     // Calculate pagination slices
     const totalPages = Math.ceil(filteredApps.length / ITEMS_PER_PAGE);
@@ -141,10 +173,16 @@ function renderApps(filter = '') {
         appCard.className = `app-card ${randomType}`;
         appCard.style.animationDelay = `${index * 0.05}s`;
 
+        // Determine category badge
+        const categoryBadge = app.category ? `<div class="app-category-badge">${app.category}</div>` : '';
+
         appCard.innerHTML = `
             <img src="${app.image || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=400'}" class="app-image" alt="${app.name}">
             <div class="app-info">
-                <div class="app-category">Application</div>
+                <div class="app-header">
+                    <div class="app-category">Application</div>
+                    ${categoryBadge}
+                </div>
                 <div class="app-name">${app.name}</div>
             </div>
         `;
@@ -157,6 +195,9 @@ function renderApps(filter = '') {
     });
 
     renderPagination(totalPages);
+
+    // Refresh dropdowns ONLY if not editing (to avoid disrupting UX, though mostly safe)
+    // Actually better to call it on data change.
 }
 
 function renderPagination(totalPages) {
@@ -171,7 +212,7 @@ function renderPagination(totalPages) {
         pageBtn.textContent = i;
         pageBtn.addEventListener('click', () => {
             currentPage = i;
-            renderApps(searchInput.value);
+            renderApps();
             // Scroll to top of grid
             document.querySelector('main').scrollTop = 0;
         });
@@ -182,7 +223,13 @@ function renderPagination(totalPages) {
 // Search handling
 searchInput.addEventListener('input', (e) => {
     currentPage = 1; // Reset to first page on new search
-    renderApps(e.target.value);
+    renderApps();
+});
+
+// Category Filter handling
+categoryFilter.addEventListener('change', (e) => {
+    currentPage = 1;
+    renderApps();
 });
 
 // Modal handling
@@ -317,13 +364,14 @@ addAppForm.addEventListener('submit', (e) => {
     const url = document.getElementById('app-url').value;
     const image = document.getElementById('app-image').value;
     const guide = document.getElementById('app-guide').value;
+    const category = document.getElementById('app-category').value;
 
     if (editingIndex !== null) {
         // Edit existing app
-        apps[editingIndex] = { name, url, image, guide };
+        apps[editingIndex] = { name, url, image, guide, category };
     } else {
         // Add new app
-        apps.push({ name, url, image, guide });
+        apps.push({ name, url, image, guide, category });
     }
 
     saveApps();
