@@ -131,37 +131,77 @@ if (!gotTheLock) {
     });
 
     ipcMain.on('launch-app', (event, url) => {
-        console.log(`Launching app with URL: ${url}`);
+        console.log(`Launching kiosk app: ${url}`);
 
-        const tempUserData = path.join(app.getPath('temp'), `hub-kiosk-${Date.now()}`);
-        const psScript = `
-$url = "${url}"
-$userData = "${tempUserData}"
-$chromePath = "\${env:ProgramFiles(x86)}\\Google\\Chrome\\Application\\chrome.exe"
-if (-not (Test-Path $chromePath)) {
-    $chromePath = "\${env:ProgramFiles}\\Google\\Chrome\\Application\\chrome.exe"
-}
+        if (url) {
+            const kioskWindow = new BrowserWindow({
+                fullscreen: true,
+                alwaysOnTop: false, // Let user alt-tab if needed, or set true for strict kiosk
+                frame: false,
+                webPreferences: {
+                    nodeIntegration: false,
+                    contextIsolation: true,
+                    preload: path.join(__dirname, 'kiosk-preload.js')
+                }
+            });
 
-$arguments = "--kiosk \`"$url\`" --user-data-dir=\`"$userData\`" --new-window --incognito --disable-pinch --overscroll-history-navigation=0 --disable-notifications --no-first-run --disable-features=TouchpadPinch --force-device-scale-factor=1"
+            // Handle new windows (popups) by blocking them or opening in same window
+            kioskWindow.webContents.setWindowOpenHandler(() => {
+                return { action: 'deny' };
+            });
 
-if (Test-Path $chromePath) {
-    Start-Process -FilePath $chromePath -ArgumentList $arguments
-} else {
-    Start-Process "msedge.exe" -ArgumentList "--kiosk $url --edge-kiosk-type=fullscreen --user-data-dir=$userData --inprivate"
-}
-  `;
+            kioskWindow.loadURL(url);
 
-        const tempPs1 = path.join(app.getPath('temp'), 'launcher.ps1');
-        fs.writeFileSync(tempPs1, psScript);
+            // Inject Back Button
+            kioskWindow.webContents.on('dom-ready', () => {
+                const css = `
+                    #nexus-kiosk-back-btn {
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        z-index: 2147483647; /* Max Z-Index */
+                        background: rgba(255, 0, 0, 0.8);
+                        color: white;
+                        border: 2px solid white;
+                        border-radius: 50px;
+                        padding: 10px 20px;
+                        font-family: sans-serif;
+                        font-weight: bold;
+                        font-size: 16px;
+                        cursor: pointer;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+                        transition: transform 0.2s, background 0.2s;
+                        text-decoration: none;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                    }
+                    #nexus-kiosk-back-btn:hover {
+                        transform: scale(1.05);
+                        background: rgba(255, 0, 0, 1);
+                    }
+                `;
+                kioskWindow.webContents.insertCSS(css);
 
-        exec(`powershell.exe -ExecutionPolicy Bypass -File "${tempPs1}"`, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`exec error: ${error}`);
-                return;
-            }
-            console.log(`stdout: ${stdout}`);
-            console.error(`stderr: ${stderr}`);
-        });
+                const js = `
+                    const btn = document.createElement('button');
+                    btn.id = 'nexus-kiosk-back-btn';
+                    btn.innerHTML = '<span>❌</span> Retour au Hub';
+                    btn.onclick = () => {
+                        window.kioskAPI.close();
+                    };
+                    document.body.appendChild(btn);
+                `;
+                kioskWindow.webContents.executeJavaScript(js);
+            });
+        }
+    });
+
+    ipcMain.on('close-kiosk', (event) => {
+        const win = BrowserWindow.fromWebContents(event.sender);
+        if (win) {
+            win.close();
+        }
     });
 
     ipcMain.on('close-app', () => {
