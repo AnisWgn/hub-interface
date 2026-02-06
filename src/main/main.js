@@ -179,12 +179,26 @@ if (Test-Path $chromePath) {
             mainWindow.maximize();
         }
     });
-    ipcMain.on('open-guide', (event, guideUrl) => {
-        if (guideUrl) {
-            console.log(`Opening guide: ${guideUrl}`);
-            shell.openExternal(guideUrl).catch(err => {
-                console.error('Error opening guide:', err);
-            });
+    ipcMain.on('open-external-link', (event, link) => {
+        if (link) {
+            console.log(`Opening link: ${link}`);
+            // Check if it's a local file path or URL
+            if (link.startsWith('http') || link.startsWith('https')) {
+                shell.openExternal(link).catch(err => console.error('Error opening external link:', err));
+            } else {
+                // Assume local path
+                shell.openPath(link).then(err => {
+                    if (err) console.error('Error opening path:', err);
+                });
+            }
         }
+    });
+
+    ipcMain.handle('show-open-dialog', async (event, filters) => {
+        const result = await dialog.showOpenDialog(mainWindow, {
+            properties: ['openFile'],
+            filters: filters
+        });
+        return result;
     });
 }

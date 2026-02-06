@@ -216,6 +216,32 @@ cancelBtn.addEventListener('click', () => {
     editingIndex = null;
 });
 
+// File Browsing Logic
+const browseImageBtn = document.getElementById('browse-image-btn');
+const browseGuideBtn = document.getElementById('browse-guide-btn');
+
+async function handleFileBrowse(filters) {
+    const result = await ipcRenderer.invoke('show-open-dialog', filters);
+    if (!result.canceled && result.filePaths.length > 0) {
+        return result.filePaths[0];
+    }
+    return null;
+}
+
+browseImageBtn.addEventListener('click', async () => {
+    const filePath = await handleFileBrowse([{ name: 'Images', extensions: ['jpg', 'png', 'gif', 'webp'] }]);
+    if (filePath) {
+        document.getElementById('app-image').value = filePath;
+    }
+});
+
+browseGuideBtn.addEventListener('click', async () => {
+    const filePath = await handleFileBrowse([{ name: 'PDF', extensions: ['pdf'] }]);
+    if (filePath) {
+        document.getElementById('app-guide').value = filePath;
+    }
+});
+
 const choiceModal = document.getElementById('choice-modal');
 const choiceAppName = document.getElementById('choice-app-name');
 const launchAppBtn = document.getElementById('launch-app-btn');

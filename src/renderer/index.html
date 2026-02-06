@@ -86,12 +86,18 @@
                         <input type="url" id="app-url" required placeholder="https://...">
                     </div>
                     <div class="form-group">
-                        <label for="app-image">URL de l'image (ou laisser vide pour défaut)</label>
-                        <input type="text" id="app-image" placeholder="https://...">
+                        <label for="app-image">Image (URL ou Fichier local)</label>
+                        <div class="input-with-btn">
+                            <input type="text" id="app-image" placeholder="https://... ou C:\...">
+                            <button type="button" id="browse-image-btn" class="icon-btn" title="Parcourir">📂</button>
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label for="app-guide">URL du Guide PDF (Optionnel)</label>
-                        <input type="text" id="app-guide" placeholder="https://... ou chemin/vers/guide.pdf">
+                        <label for="app-guide">Guide PDF (URL ou Fichier local)</label>
+                        <div class="input-with-btn">
+                            <input type="text" id="app-guide" placeholder="https://... ou C:\...">
+                            <button type="button" id="browse-guide-btn" class="icon-btn" title="Parcourir">📂</button>
+                        </div>
                     </div>
                     <div class="modal-actions">
                         <button type="button" id="cancel-btn" class="secondary-btn">Annuler</button>

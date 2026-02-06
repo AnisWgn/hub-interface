@@ -618,3 +618,8 @@ main::-webkit-scrollbar-thumb {
     border-color: #e2e8f0;
     box-shadow: none;
 }
+/* Input with Button Group */
+.input-with-btn { display: flex; gap: 8px; }
+.input-with-btn input { flex: 1; }
+.icon-btn { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 0 12px; font-size: 1.2rem; cursor: pointer; transition: all 0.3s ease; }
+.icon-btn:hover { background: rgba(255, 255, 255, 0.2); transform: scale(1.05); }
