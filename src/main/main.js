@@ -462,4 +462,64 @@ if (!gotTheLock) {
         });
         return result;
     });
+
+    // Handler pour copier une image dans le dossier assets/images
+    ipcMain.handle('copy-image-to-assets', async (event, sourcePath) => {
+        try {
+            // Vérifier si le fichier source existe
+            if (!fs.existsSync(sourcePath)) {
+                throw new Error('Le fichier source n\'existe pas');
+            }
+
+            // Créer le dossier assets/images s'il n'existe pas
+            const assetsDir = path.join(app.getPath('userData'), 'assets', 'images');
+            if (!fs.existsSync(assetsDir)) {
+                fs.mkdirSync(assetsDir, { recursive: true });
+            }
+
+            // Vérifier si le fichier est déjà dans le dossier assets
+            // Si c'est le cas, on le retourne tel quel
+            if (sourcePath.startsWith(assetsDir)) {
+                return sourcePath;
+            }
+
+            // Générer un nom de fichier unique basé sur le timestamp et le nom original
+            const ext = path.extname(sourcePath);
+            const timestamp = Date.now();
+            const randomSuffix = Math.random().toString(36).substring(2, 8);
+            const fileName = `img_${timestamp}_${randomSuffix}${ext}`;
+            const destPath = path.join(assetsDir, fileName);
+
+            // Copier le fichier
+            fs.copyFileSync(sourcePath, destPath);
+
+            // Retourner le chemin absolu pour le stockage
+            return destPath;
+        } catch (error) {
+            console.error('Error copying image to assets:', error);
+            throw error;
+        }
+    });
+
+    // Handler pour obtenir l'URL d'une image depuis le chemin stocké
+    ipcMain.handle('get-image-url', async (event, imagePath) => {
+        try {
+            // Si c'est déjà une URL HTTP/HTTPS, on la retourne telle quelle
+            if (imagePath && (imagePath.startsWith('http://') || imagePath.startsWith('https://'))) {
+                return imagePath;
+            }
+
+            // Si c'est un chemin de fichier local, vérifier s'il existe
+            if (imagePath && fs.existsSync(imagePath)) {
+                // Convertir le chemin en URL file:// pour Electron
+                return `file:///${imagePath.replace(/\\/g, '/')}`;
+            }
+
+            // Si le fichier n'existe pas, retourner null ou une image par défaut
+            return null;
+        } catch (error) {
+            console.error('Error getting image URL:', error);
+            return null;
+        }
+    });
 }

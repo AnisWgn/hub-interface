@@ -288,7 +288,20 @@ function renderApps() {
 
                 // Determine category badge
                 const categoryBadge = app.category ? `<div class="app-category-badge">${app.category}</div>` : '';
-                const imageUrl = app.image || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=400';
+                
+                // Convertir le chemin de l'image en URL (gère les URLs HTTP et les chemins locaux)
+                let imageUrl = 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=400';
+                if (app.image) {
+                    if (app.image.startsWith('http://') || app.image.startsWith('https://')) {
+                        // URL HTTP/HTTPS - utiliser directement
+                        imageUrl = app.image;
+                    } else {
+                        // Chemin local - convertir en URL file://
+                        // Remplacer les backslashes par des forward slashes pour les URLs
+                        const normalizedPath = app.image.replace(/\\/g, '/');
+                        imageUrl = `file:///${normalizedPath}`;
+                    }
+                }
                 
                 // Créer l'image avec lazy loading
                 const img = document.createElement('img');
@@ -297,6 +310,12 @@ function renderApps() {
                 img.alt = app.name;
                 img.loading = 'lazy';
                 img.decoding = 'async';
+                
+                // Gérer les erreurs de chargement d'image
+                img.onerror = () => {
+                    // Si l'image ne peut pas être chargée, utiliser l'image par défaut
+                    img.src = 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=400';
+                };
                 
                 // Créer le contenu de la carte
                 const appInfo = document.createElement('div');
@@ -410,7 +429,15 @@ async function handleFileBrowse(filters) {
 browseImageBtn.addEventListener('click', async () => {
     const filePath = await handleFileBrowse([{ name: 'Images', extensions: ['jpg', 'png', 'gif', 'webp'] }]);
     if (filePath) {
-        document.getElementById('app-image').value = filePath;
+        try {
+            // Copier l'image dans le dossier assets
+            const copiedPath = await ipcRenderer.invoke('copy-image-to-assets', filePath);
+            document.getElementById('app-image').value = copiedPath;
+        } catch (error) {
+            console.error('Erreur lors de la copie de l\'image:', error);
+            alert('Erreur lors de la copie de l\'image. Le chemin original sera utilisé.');
+            document.getElementById('app-image').value = filePath;
+        }
     }
 });
 
