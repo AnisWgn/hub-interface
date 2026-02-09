@@ -12,9 +12,25 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
-const appsRef = database.ref('kiosk-apps');
+// Note: L'avertissement "browser-targeted Firebase bundle" est normal dans Electron
+// Firebase fonctionne correctement malgré cet avertissement
+let database, appsRef;
+try {
+    firebase.initializeApp(firebaseConfig);
+    database = firebase.database();
+    appsRef = database.ref('kiosk-apps');
+    
+    // Exposer globalement pour renderer.js
+    window.database = database;
+    window.appsRef = appsRef;
+} catch (error) {
+    console.error('Firebase initialization error:', error);
+    // Créer des objets vides pour éviter les erreurs si Firebase échoue
+    database = null;
+    appsRef = null;
+    window.database = null;
+    window.appsRef = null;
+}
 
 // Connection state (optional debug)
 database.ref(".info/connected").on("value", (snap) => {

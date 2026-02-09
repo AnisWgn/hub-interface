@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Nexus Hub - Applications Kiosque">
+    <!-- Content Security Policy pour Electron -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://fonts.googleapis.com https://fonts.gstatic.com https://images.unsplash.com data: file:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' https://images.unsplash.com data: file:; connect-src 'self' https://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebaseio.com wss://*.firebasedatabase.app;">
     <title>Nexus Hub</title>
     <!-- Optimisation performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,15 +15,28 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
 
     <script>
-        // Hide Node/Electron globals so Firebase runs in browser mode (use only window.xxx to avoid ReferenceError)
+        // Hide Node/Electron globals so Firebase runs in browser mode
+        // Firebase SDK browser détecte l'environnement Node, on cache les globals avant le chargement
         (function () {
             var w = window;
-            if (w.process !== undefined) { w.__tempProcess = w.process; w.process = undefined; }
+            // Sauvegarder les globals Node/Electron
+            if (w.process !== undefined) { w.__tempProcess = w.process; delete w.process; }
             if (w.global !== undefined) { w.__tempGlobal = w.global; w.global = w; }
-            if (w.module !== undefined) { w.__tempModule = w.module; w.module = undefined; }
-            if (w.exports !== undefined) { w.__tempExports = w.exports; w.exports = undefined; }
-            if (w.require !== undefined) { w.__tempRequire = w.require; w.require = undefined; }
-            if (w.Buffer !== undefined) { w.__tempBuffer = w.Buffer; w.Buffer = undefined; }
+            if (w.module !== undefined) { w.__tempModule = w.module; delete w.module; }
+            if (w.exports !== undefined) { w.__tempExports = w.exports; delete w.exports; }
+            if (w.require !== undefined) { w.__tempRequire = w.require; delete w.require; }
+            if (w.Buffer !== undefined) { w.__tempBuffer = w.Buffer; delete w.Buffer; }
+            
+            // Supprimer aussi les propriétés qui pourraient être détectées
+            if (w.__dirname !== undefined) { w.__tempDirname = w.__dirname; delete w.__dirname; }
+            if (w.__filename !== undefined) { w.__tempFilename = w.__filename; delete w.__filename; }
+            
+            // Supprimer les propriétés de process si elles existent encore
+            try {
+                if (typeof process !== 'undefined') {
+                    w.__tempProcessEnv = process.env;
+                }
+            } catch(e) {}
         })();
     </script>
 
@@ -31,12 +46,46 @@
 
     <script>
         // Restore Node/Electron globals for renderer.js (require, process, etc.)
-        if (window.__tempProcess !== undefined) { window.process = window.__tempProcess; }
-        if (window.__tempGlobal !== undefined) { window.global = window.__tempGlobal; }
-        if (window.__tempRequire !== undefined) { window.require = window.__tempRequire; }
-        if (window.__tempExports !== undefined) { window.exports = window.__tempExports; }
-        if (window.__tempModule !== undefined) { window.module = window.__tempModule; }
-        if (window.__tempBuffer !== undefined) { window.Buffer = window.__tempBuffer; }
+        // Après le chargement de Firebase, restaurer les globals nécessaires pour Electron
+        if (window.__tempProcess !== undefined) { 
+            window.process = window.__tempProcess; 
+        }
+        if (window.__tempGlobal !== undefined) { 
+            window.global = window.__tempGlobal; 
+        }
+        if (window.__tempRequire !== undefined) { 
+            window.require = window.__tempRequire; 
+        }
+        if (window.__tempExports !== undefined) { 
+            window.exports = window.__tempExports; 
+        }
+        if (window.__tempModule !== undefined) { 
+            window.module = window.__tempModule; 
+        }
+        if (window.__tempBuffer !== undefined) { 
+            window.Buffer = window.__tempBuffer; 
+        }
+        if (window.__tempDirname !== undefined) { 
+            window.__dirname = window.__tempDirname; 
+        }
+        if (window.__tempFilename !== undefined) { 
+            window.__filename = window.__tempFilename; 
+        }
+        
+        // Supprimer l'avertissement Firebase de la console (optionnel, pour un affichage plus propre)
+        if (typeof console !== 'undefined' && console.warn) {
+            const originalWarn = console.warn;
+            console.warn = function(...args) {
+                // Filtrer l'avertissement Firebase spécifique
+                const message = args.join(' ');
+                if (message.includes('browser-targeted Firebase bundle') && 
+                    message.includes('Node environment')) {
+                    // Ignorer cet avertissement spécifique
+                    return;
+                }
+                originalWarn.apply(console, args);
+            };
+        }
     </script>
 
     <script src="../config/firebase-config.js"></script>

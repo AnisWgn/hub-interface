@@ -85,6 +85,9 @@ if (!gotTheLock) {
                 enableRemoteModule: false,
                 backgroundThrottling: false, // Garder l'app performante même en arrière-plan
                 offscreen: false,
+                // Sécurité : désactiver les fonctionnalités web dangereuses
+                webSecurity: true,
+                allowRunningInsecureContent: false,
             },
             frame: false, // Premium feel
             transparent: true,
