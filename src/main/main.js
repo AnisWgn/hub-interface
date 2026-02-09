@@ -21,17 +21,53 @@ if (!app.isPackaged) {
     app.setPath('userData', path.join(app.getAppPath(), 'data'));
 }
 
+// Gestion des erreurs non capturées AVANT tout
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 // Single Instance Lock
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
+    console.log('Another instance is already running, quitting...');
     app.quit();
 } else {
     app.on('second-instance', (event, commandLine, workingDirectory) => {
         // Someone tried to run a second instance, we should focus our window.
+        console.log('Second instance detected, focusing main window...');
         if (mainWindow) {
             if (mainWindow.isMinimized()) mainWindow.restore();
             mainWindow.focus();
+        }
+    });
+
+    // Gestion des erreurs de rendu
+    app.on('render-process-gone', (event, webContents, details) => {
+        console.error('Render process gone:', details);
+    });
+
+    app.on('child-process-gone', (event, details) => {
+        console.error('Child process gone:', details);
+    });
+
+    // Gestion de la fermeture de toutes les fenêtres
+    app.on('window-all-closed', () => {
+        console.log('All windows closed');
+        if (process.platform !== 'darwin') {
+            app.quit();
+        }
+    });
+
+    // Gestion de l'activation (macOS)
+    app.on('activate', () => {
+        console.log('App activated');
+        if (BrowserWindow.getAllWindows().length === 0) {
+            createWindow();
         }
     });
 
@@ -60,14 +96,47 @@ if (!gotTheLock) {
 
         // Chemin qui fonctionne en dev (electron .) et en .exe packagé
         const htmlPath = path.join(app.getAppPath(), 'src', 'renderer', 'index.html');
-        mainWindow.loadFile(htmlPath);
+        console.log('Loading HTML from:', htmlPath);
+        
+        // Vérifier que le fichier existe
+        if (!fs.existsSync(htmlPath)) {
+            console.error('ERROR: HTML file not found at:', htmlPath);
+            dialog.showErrorBox(
+                'Fichier manquant',
+                `Le fichier index.html est introuvable à:\n${htmlPath}\n\nVérifiez que tous les fichiers sont présents.`
+            );
+            return;
+        }
+
+        mainWindow.loadFile(htmlPath).catch((error) => {
+            console.error('Error loading HTML file:', error);
+            dialog.showErrorBox(
+                'Erreur de chargement',
+                `Impossible de charger l'interface:\n${error.message}`
+            );
+        });
+
         mainWindow.once('ready-to-show', () => {
+            console.log('Window ready to show');
             mainWindow.maximize();
             mainWindow.show();
             console.log('Hub Interface initialized successfully.');
             if (!app.isPackaged) {
                 mainWindow.webContents.openDevTools();
             }
+        });
+
+        // Gestion des erreurs de chargement
+        mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+            console.error('Failed to load:', {
+                errorCode,
+                errorDescription,
+                validatedURL
+            });
+            dialog.showErrorBox(
+                'Erreur de chargement',
+                `Code: ${errorCode}\nDescription: ${errorDescription}\nURL: ${validatedURL}`
+            );
         });
 
         mainWindow.on('enter-full-screen', () => {
@@ -91,12 +160,7 @@ if (!gotTheLock) {
         });
     }
 
-    app.whenReady().then(() => {
-        createWindow();
-        if (autoUpdater) autoUpdater.checkForUpdatesAndNotify();
-    });
-
-    // Auto Updater Events
+    // Auto Updater Events (doit être avant app.whenReady)
     if (autoUpdater) {
         autoUpdater.on('update-available', (info) => {
             console.log('Update available:', info.version);
@@ -107,16 +171,18 @@ if (!gotTheLock) {
 
         autoUpdater.on('update-downloaded', (info) => {
             console.log('Update downloaded:', info.version);
-            dialog.showMessageBox(mainWindow, {
-                type: 'info',
-                title: 'Mise à jour disponible',
-                message: `La version ${info.version} a été téléchargée. L'application va redémarrer pour installer la mise à jour.`,
-                buttons: ['Redémarrer maintenant', 'Plus tard']
-            }).then((result) => {
-                if (result.response === 0) {
-                    autoUpdater.quitAndInstall();
-                }
-            });
+            if (mainWindow) {
+                dialog.showMessageBox(mainWindow, {
+                    type: 'info',
+                    title: 'Mise à jour disponible',
+                    message: `La version ${info.version} a été téléchargée. L'application va redémarrer pour installer la mise à jour.`,
+                    buttons: ['Redémarrer maintenant', 'Plus tard']
+                }).then((result) => {
+                    if (result.response === 0) {
+                        autoUpdater.quitAndInstall();
+                    }
+                });
+            }
         });
 
         autoUpdater.on('error', (err) => {
@@ -124,17 +190,26 @@ if (!gotTheLock) {
         });
     }
 
-    app.on('window-all-closed', () => {
-        if (process.platform !== 'darwin') {
-            app.quit();
+    // Initialisation de l'application
+    app.whenReady().then(() => {
+        console.log('Electron app ready, creating window...');
+        createWindow();
+        if (autoUpdater) {
+            try {
+                autoUpdater.checkForUpdatesAndNotify();
+            } catch (e) {
+                console.warn('Auto-updater error (non-blocking):', e.message);
+            }
         }
+    }).catch((error) => {
+        console.error('Error in app.whenReady():', error);
+        dialog.showErrorBox(
+            'Erreur au démarrage',
+            `Impossible de démarrer l'application:\n${error.message}`
+        );
     });
 
-    app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) {
-            createWindow();
-        }
-    });
+
 
     ipcMain.on('launch-app', (event, url) => {
         console.log(`Launching kiosk app: ${url}`);

@@ -1,7 +1,6 @@
 {
     "name": "hub-interface",
-    "version": "3.0.4",
-    "packageManager": "traversal",
+    "version": "3.0.5",
     "description": "Kiosk Hub Interface",
     "author": "Nexus Team",
     "main": "src/main/main.js",
