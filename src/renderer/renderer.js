@@ -426,17 +426,98 @@ async function handleFileBrowse(filters) {
     return null;
 }
 
-browseImageBtn.addEventListener('click', async () => {
-    const filePath = await handleFileBrowse([{ name: 'Images', extensions: ['jpg', 'png', 'gif', 'webp'] }]);
-    if (filePath) {
+/**
+ * Upload une image vers Firebase Storage et retourne l'URL de téléchargement
+ * @param {string} filePath - Chemin local du fichier
+ * @returns {Promise<string>} URL Firebase Storage de l'image uploadée
+ */
+async function uploadImageToFirebaseStorage(filePath) {
+    return new Promise(async (resolve, reject) => {
         try {
-            // Copier l'image dans le dossier assets
-            const copiedPath = await ipcRenderer.invoke('copy-image-to-assets', filePath);
-            document.getElementById('app-image').value = copiedPath;
+            // Vérifier que Firebase Storage est disponible
+            if (!window.storage) {
+                throw new Error('Firebase Storage n\'est pas initialisé');
+            }
+
+            // Lire le fichier depuis le système de fichiers via le main process
+            const fileData = await ipcRenderer.invoke('read-file-for-upload', filePath);
+            
+            // Générer un nom de fichier unique
+            const timestamp = Date.now();
+            const randomSuffix = Math.random().toString(36).substring(2, 8);
+            const uniqueFileName = `images/img_${timestamp}_${randomSuffix}${fileData.ext}`;
+
+            // Créer une référence vers Firebase Storage
+            const storageRef = window.storage.ref();
+            const imageRef = storageRef.child(uniqueFileName);
+
+            // Convertir le buffer en Blob
+            const blob = new Blob([fileData.buffer], { type: fileData.mimeType });
+
+            // Upload vers Firebase Storage
+            const uploadTask = imageRef.put(blob);
+
+            uploadTask.on('state_changed', 
+                (snapshot) => {
+                    // Progression de l'upload (optionnel)
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    console.log(`Upload en cours: ${progress.toFixed(0)}%`);
+                },
+                (error) => {
+                    console.error('Erreur lors de l\'upload:', error);
+                    reject(error);
+                },
+                async () => {
+                    // Upload réussi, récupérer l'URL de téléchargement
+                    try {
+                        const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                        console.log('Image uploadée avec succès:', downloadURL);
+                        resolve(downloadURL);
+                    } catch (error) {
+                        console.error('Erreur lors de la récupération de l\'URL:', error);
+                        reject(error);
+                    }
+                }
+            );
         } catch (error) {
-            console.error('Erreur lors de la copie de l\'image:', error);
-            alert('Erreur lors de la copie de l\'image. Le chemin original sera utilisé.');
-            document.getElementById('app-image').value = filePath;
+            console.error('Erreur lors de la préparation de l\'upload:', error);
+            reject(error);
+        }
+    });
+}
+
+browseImageBtn.addEventListener('click', async () => {
+    const filePath = await handleFileBrowse([{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'] }]);
+    if (filePath) {
+        const imageInput = document.getElementById('app-image');
+        const originalValue = imageInput.value;
+        
+        // Afficher un indicateur de chargement
+        imageInput.value = 'Upload en cours...';
+        imageInput.disabled = true;
+        browseImageBtn.disabled = true;
+        browseImageBtn.textContent = '⏳';
+
+        try {
+            // Uploader l'image vers Firebase Storage
+            const firebaseUrl = await uploadImageToFirebaseStorage(filePath);
+            imageInput.value = firebaseUrl;
+            console.log('Image uploadée avec succès:', firebaseUrl);
+        } catch (error) {
+            console.error('Erreur lors de l\'upload de l\'image:', error);
+            alert('Erreur lors de l\'upload de l\'image vers Firebase Storage. Le chemin local sera utilisé.');
+            // En cas d'erreur, utiliser le chemin local comme fallback
+            try {
+                const copiedPath = await ipcRenderer.invoke('copy-image-to-assets', filePath);
+                imageInput.value = copiedPath;
+            } catch (fallbackError) {
+                console.error('Erreur lors de la copie locale:', fallbackError);
+                imageInput.value = filePath;
+            }
+        } finally {
+            imageInput.disabled = false;
+            browseImageBtn.disabled = false;
+            browseImageBtn.textContent = '📂';
         }
     }
 });
@@ -534,14 +615,43 @@ closeChoiceBtn.addEventListener('click', () => {
     choiceModal.classList.remove('active');
 });
 
-addAppForm.addEventListener('submit', (e) => {
+addAppForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('app-name').value;
     const url = document.getElementById('app-url').value;
-    const image = document.getElementById('app-image').value;
+    let image = document.getElementById('app-image').value;
     const guide = document.getElementById('app-guide').value;
     const github = document.getElementById('app-github').value;
     const category = document.getElementById('app-category').value;
+
+    // Si l'image est un chemin local (pas une URL HTTP/HTTPS), essayer de l'uploader vers Firebase Storage
+    if (image && !image.startsWith('http://') && !image.startsWith('https://')) {
+        // Vérifier si c'est un fichier local existant
+        try {
+            const fileCheck = await ipcRenderer.invoke('check-local-file', image);
+            if (fileCheck.isLocal && fileCheck.exists) {
+                // Le fichier existe localement, uploader vers Firebase Storage
+                const submitBtn = addAppForm.querySelector('button[type="submit"]');
+                const originalText = submitBtn.textContent;
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Upload de l\'image...';
+                
+                try {
+                    const firebaseUrl = await uploadImageToFirebaseStorage(image);
+                    image = firebaseUrl;
+                    console.log('Image locale convertie en URL Firebase Storage:', firebaseUrl);
+                } catch (uploadError) {
+                    console.warn('Impossible d\'uploader l\'image locale, utilisation du chemin local:', uploadError);
+                    // Continuer avec le chemin local en cas d'erreur
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+            }
+        } catch (error) {
+            console.warn('Impossible de vérifier le chemin local, utilisation tel quel:', error);
+        }
+    }
 
     if (editingIndex !== null) {
         // Edit existing app

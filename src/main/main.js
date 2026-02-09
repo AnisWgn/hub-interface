@@ -522,4 +522,61 @@ if (!gotTheLock) {
             return null;
         }
     });
+
+    // Handler pour lire un fichier et le retourner comme buffer/base64 pour l'upload Firebase
+    ipcMain.handle('read-file-for-upload', async (event, filePath) => {
+        try {
+            if (!fs.existsSync(filePath)) {
+                throw new Error('Le fichier n\'existe pas');
+            }
+
+            // Lire le fichier comme buffer
+            const fileBuffer = fs.readFileSync(filePath);
+            const fileName = path.basename(filePath);
+            const ext = path.extname(filePath);
+            
+            // Déterminer le type MIME
+            let mimeType = 'image/jpeg';
+            switch (ext.toLowerCase()) {
+                case '.png':
+                    mimeType = 'image/png';
+                    break;
+                case '.gif':
+                    mimeType = 'image/gif';
+                    break;
+                case '.webp':
+                    mimeType = 'image/webp';
+                    break;
+                case '.jpg':
+                case '.jpeg':
+                default:
+                    mimeType = 'image/jpeg';
+            }
+
+            // Retourner les données nécessaires
+            return {
+                buffer: fileBuffer,
+                fileName: fileName,
+                mimeType: mimeType,
+                ext: ext
+            };
+        } catch (error) {
+            console.error('Error reading file for upload:', error);
+            throw error;
+        }
+    });
+
+    // Handler pour vérifier si un chemin est un fichier local existant
+    ipcMain.handle('check-local-file', async (event, filePath) => {
+        try {
+            if (!filePath || filePath.startsWith('http://') || filePath.startsWith('https://')) {
+                return { isLocal: false, exists: false };
+            }
+            const exists = fs.existsSync(filePath);
+            return { isLocal: true, exists: exists };
+        } catch (error) {
+            console.error('Error checking local file:', error);
+            return { isLocal: false, exists: false };
+        }
+    });
 }
