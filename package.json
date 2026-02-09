@@ -1,6 +1,6 @@
 {
     "name": "hub-interface",
-    "version": "3.0.6",
+    "version": "3.7.0",
     "description": "Kiosk Hub Interface",
     "author": "Nexus Team",
     "main": "src/main/main.js",

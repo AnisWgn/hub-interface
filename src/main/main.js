@@ -74,10 +74,26 @@ if (!gotTheLock) {
     let mainWindow;
 
     function createWindow() {
+        console.log('createWindow() called');
+        console.log('app.getAppPath():', app.getAppPath());
+        console.log('app.isPackaged:', app.isPackaged);
+        
+        // Chemin de l'icône
+        let iconPath;
+        if (app.isPackaged) {
+            iconPath = path.join(process.resourcesPath, 'app', 'build', 'icon.ico');
+            if (!fs.existsSync(iconPath)) {
+                iconPath = path.join(__dirname, '..', '..', 'build', 'icon.ico');
+            }
+        } else {
+            iconPath = path.join(app.getAppPath(), 'build', 'icon.ico');
+        }
+        console.log('Icon path:', iconPath, 'exists:', fs.existsSync(iconPath));
+        
         mainWindow = new BrowserWindow({
             width: 1200,
             height: 800,
-            icon: path.join(app.getAppPath(), 'build', 'icon.ico'),
+            icon: iconPath,
             webPreferences: {
                 nodeIntegration: true,
                 contextIsolation: false, // For simplicity in this hub app
@@ -89,17 +105,32 @@ if (!gotTheLock) {
                 webSecurity: true,
                 allowRunningInsecureContent: false,
             },
-            frame: false, // Premium feel
-            transparent: true,
-            backgroundColor: '#00000000',
+            frame: false,
+            transparent: false,
+            backgroundColor: '#313338', // Discord dark theme
             show: false,
             // Optimisations performance
             paintWhenInitiallyHidden: false,
+            // Forcer l'affichage même si le contenu ne charge pas
+            skipTaskbar: false,
+            // Forcer l'affichage même si le contenu n'est pas prêt
+            alwaysOnTop: false,
         });
 
         // Chemin qui fonctionne en dev (electron .) et en .exe packagé
-        const htmlPath = path.join(app.getAppPath(), 'src', 'renderer', 'index.html');
+        // Comme asar: false, les fichiers sont directement accessibles
+        let htmlPath;
+        if (app.isPackaged) {
+            // En mode packagé, __dirname pointe vers resources/app/src/main
+            htmlPath = path.join(__dirname, '..', 'renderer', 'index.html');
+        } else {
+            // En mode dev, app.getAppPath() pointe vers le dossier racine du projet
+            htmlPath = path.join(app.getAppPath(), 'src', 'renderer', 'index.html');
+        }
         console.log('Loading HTML from:', htmlPath);
+        console.log('File exists:', fs.existsSync(htmlPath));
+        console.log('__dirname:', __dirname);
+        console.log('app.getAppPath():', app.getAppPath());
         
         // Vérifier que le fichier existe
         if (!fs.existsSync(htmlPath)) {
@@ -111,8 +142,14 @@ if (!gotTheLock) {
             return;
         }
 
-        mainWindow.loadFile(htmlPath).catch((error) => {
+        mainWindow.loadFile(htmlPath).then(() => {
+            console.log('HTML file loaded successfully');
+        }).catch((error) => {
             console.error('Error loading HTML file:', error);
+            // Afficher la fenêtre même en cas d'erreur
+            if (mainWindow && !mainWindow.isVisible()) {
+                mainWindow.show();
+            }
             dialog.showErrorBox(
                 'Erreur de chargement',
                 `Impossible de charger l'interface:\n${error.message}`
@@ -129,6 +166,28 @@ if (!gotTheLock) {
             }
         });
 
+        // Fallback: Afficher la fenêtre après 2 secondes même si ready-to-show ne s'est pas déclenché
+        setTimeout(() => {
+            if (mainWindow && !mainWindow.isVisible()) {
+                console.warn('Fallback: Showing window after timeout (ready-to-show may not have fired)');
+                mainWindow.show();
+                mainWindow.maximize();
+                if (!app.isPackaged) {
+                    mainWindow.webContents.openDevTools();
+                }
+            }
+        }, 2000);
+
+        // Fallback supplémentaire après 5 secondes
+        setTimeout(() => {
+            if (mainWindow && !mainWindow.isVisible()) {
+                console.error('CRITICAL: Window still not visible after 5 seconds, forcing show');
+                mainWindow.show();
+                mainWindow.focus();
+                mainWindow.maximize();
+            }
+        }, 5000);
+
         // Gestion des erreurs de chargement
         mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
             console.error('Failed to load:', {
@@ -136,10 +195,27 @@ if (!gotTheLock) {
                 errorDescription,
                 validatedURL
             });
+            // Afficher la fenêtre même en cas d'erreur pour voir le message
+            if (mainWindow && !mainWindow.isVisible()) {
+                mainWindow.show();
+            }
             dialog.showErrorBox(
                 'Erreur de chargement',
                 `Code: ${errorCode}\nDescription: ${errorDescription}\nURL: ${validatedURL}`
             );
+        });
+
+        // Log quand le DOM est prêt
+        mainWindow.webContents.on('dom-ready', () => {
+            console.log('DOM ready - page loaded');
+        });
+
+        // Log les erreurs de rendu
+        mainWindow.webContents.on('render-process-gone', (event, details) => {
+            console.error('Render process gone:', details);
+            if (mainWindow && !mainWindow.isVisible()) {
+                mainWindow.show();
+            }
         });
 
         mainWindow.on('enter-full-screen', () => {
@@ -197,13 +273,17 @@ if (!gotTheLock) {
     app.whenReady().then(() => {
         console.log('Electron app ready, creating window...');
         createWindow();
-        if (autoUpdater) {
-            try {
-                autoUpdater.checkForUpdatesAndNotify();
-            } catch (e) {
-                console.warn('Auto-updater error (non-blocking):', e.message);
+        // Délayer la vérification des mises à jour pour ne pas bloquer l'affichage
+        setTimeout(() => {
+            if (autoUpdater) {
+                try {
+                    console.log('Checking for updates...');
+                    autoUpdater.checkForUpdatesAndNotify();
+                } catch (e) {
+                    console.warn('Auto-updater error (non-blocking):', e.message);
+                }
             }
-        }
+        }, 2000); // Attendre 2 secondes après l'affichage de la fenêtre
     }).catch((error) => {
         console.error('Error in app.whenReady():', error);
         dialog.showErrorBox(
