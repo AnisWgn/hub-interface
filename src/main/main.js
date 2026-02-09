@@ -45,11 +45,17 @@ if (!gotTheLock) {
             webPreferences: {
                 nodeIntegration: true,
                 contextIsolation: false, // For simplicity in this hub app
+                // Optimisations performance
+                enableRemoteModule: false,
+                backgroundThrottling: false, // Garder l'app performante même en arrière-plan
+                offscreen: false,
             },
             frame: false, // Premium feel
             transparent: true,
             backgroundColor: '#00000000',
             show: false,
+            // Optimisations performance
+            paintWhenInitiallyHidden: false,
         });
 
         // Chemin qui fonctionne en dev (electron .) et en .exe packagé

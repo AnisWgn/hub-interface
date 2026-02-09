@@ -37,12 +37,42 @@ const connectionTimeout = setTimeout(() => {
     }
 }, 10000);
 
-// Listen for changes in Realtime Database (real-time sync)
+// Listen for changes in Realtime Database (real-time sync) - Optimisé avec throttling
 if (typeof appsRef !== 'undefined') {
+    let lastUpdateTime = 0;
+    const THROTTLE_MS = 300; // Minimum 300ms entre les updates
+    
     appsRef.on('value', (snapshot) => {
         clearTimeout(connectionTimeout);
         updateConnectionStatus('connected');
         const data = snapshot.val();
+        
+        // Vérifier si les données ont vraiment changé
+        const dataString = JSON.stringify(data);
+        if (dataString === lastAppsData) {
+            return; // Pas de changement, skip le render
+        }
+        lastAppsData = dataString;
+        
+        // Throttling pour éviter les updates trop fréquents
+        const now = Date.now();
+        if (now - lastUpdateTime < THROTTLE_MS && lastUpdateTime > 0) {
+            // Schedule update pour plus tard
+            clearTimeout(renderTimeout);
+            renderTimeout = setTimeout(() => {
+                processAppsUpdate(data);
+            }, THROTTLE_MS - (now - lastUpdateTime));
+            return;
+        }
+        lastUpdateTime = now;
+        
+        processAppsUpdate(data);
+    }, (error) => {
+        console.error("Realtime Database Sync Error:", error);
+        updateConnectionStatus('error');
+    });
+    
+    function processAppsUpdate(data) {
         if (data) {
             apps = data;
         } else {
@@ -59,10 +89,7 @@ if (typeof appsRef !== 'undefined') {
         }
         updateCategoryDropdowns();
         renderApps();
-    }, (error) => {
-        console.error("Realtime Database Sync Error:", error);
-        updateConnectionStatus('error');
-    });
+    }
 } else {
     console.error("appsRef is not defined. Check firebase-config.js.");
     updateConnectionStatus('error');
@@ -88,6 +115,24 @@ let selectedCategory = ''; // Store the value here instead of select.value
 
 const ITEMS_PER_PAGE = 9;
 let currentPage = 1;
+
+// Performance optimizations
+let renderTimeout = null;
+let lastAppsData = null; // Cache pour éviter les re-renders inutiles
+let isRendering = false; // Flag pour éviter les renders simultanés
+
+// Debounce function pour optimiser les performances
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
 
 function updateCategoryDropdowns() {
     // Extract unique categories
@@ -161,72 +206,97 @@ document.addEventListener('click', (e) => {
 });
 
 function renderApps() {
-    const filterText = searchInput.value.toLowerCase();
-
-    // Use selectedCategory variable instead of filter.value
-    const filterCategory = selectedCategory;
-
-    // Remove all existing app cards except the "Add" card
-    const existingCards = document.querySelectorAll('.app-card:not(.add-card)');
-    existingCards.forEach(card => card.remove());
-
-    const filteredApps = apps.filter(app => {
-        const matchesSearch = app.name.toLowerCase().includes(filterText);
-        const matchesCategory = filterCategory === '' || app.category === filterCategory;
-        return matchesSearch && matchesCategory;
-    });
-
-    // Calculate pagination slices
-    const totalPages = Math.ceil(filteredApps.length / ITEMS_PER_PAGE);
-
-    // Safety check for current page
-    if (currentPage > totalPages && totalPages > 0) {
-        currentPage = totalPages;
-    } else if (totalPages === 0) {
-        currentPage = 1; // If no apps, reset to page 1
+    // Éviter les renders simultanés
+    if (isRendering) {
+        return;
     }
+    isRendering = true;
+    
+    // Utiliser requestAnimationFrame pour optimiser le rendu
+    requestAnimationFrame(() => {
+        try {
+            const filterText = searchInput.value.toLowerCase();
+            const filterCategory = selectedCategory;
 
+            // Filtrer les apps
+            const filteredApps = apps.filter(app => {
+                const matchesSearch = app.name.toLowerCase().includes(filterText);
+                const matchesCategory = filterCategory === '' || app.category === filterCategory;
+                return matchesSearch && matchesCategory;
+            });
 
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    const pagedApps = filteredApps.slice(startIndex, endIndex);
+            // Calculate pagination slices
+            const totalPages = Math.ceil(filteredApps.length / ITEMS_PER_PAGE);
 
-    pagedApps.forEach((app, index) => {
-        const originalIndex = apps.indexOf(app);
+            // Safety check for current page
+            if (currentPage > totalPages && totalPages > 0) {
+                currentPage = totalPages;
+            } else if (totalPages === 0) {
+                currentPage = 1;
+            }
 
-        const appCard = document.createElement('div');
-        // Use a deterministic pseudo-random based on name to avoid flickering
-        const randomType = (app.name.length % 7 === 0) ? 'card-wide' :
-            (app.name.length % 5 === 0) ? 'card-tall' : '';
+            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+            const endIndex = startIndex + ITEMS_PER_PAGE;
+            const pagedApps = filteredApps.slice(startIndex, endIndex);
 
-        appCard.className = `app-card ${randomType}`;
-        appCard.style.animationDelay = `${index * 0.05}s`;
+            // Supprimer les cartes existantes (approche simple mais optimisée avec DocumentFragment)
+            const existingCards = document.querySelectorAll('.app-card:not(.add-card)');
+            existingCards.forEach(card => card.remove());
 
-        // Determine category badge
-        const categoryBadge = app.category ? `<div class="app-category-badge">${app.category}</div>` : '';
+            // Utiliser DocumentFragment pour réduire les reflows
+            const fragment = document.createDocumentFragment();
+            
+            // Créer les nouvelles cartes
+            pagedApps.forEach((app, index) => {
+                const appCard = document.createElement('div');
+                
+                // Use a deterministic pseudo-random based on name
+                const randomType = (app.name.length % 7 === 0) ? 'card-wide' :
+                    (app.name.length % 5 === 0) ? 'card-tall' : '';
+                appCard.className = `app-card ${randomType}`;
 
-        appCard.innerHTML = `
-            <img src="${app.image || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=400'}" class="app-image" alt="${app.name}">
-            <div class="app-info">
-                <div class="app-header">
-                    <div class="app-category">Application</div>
-                    ${categoryBadge}
-                </div>
-                <div class="app-name">${app.name}</div>
-            </div>
-        `;
+                // Determine category badge
+                const categoryBadge = app.category ? `<div class="app-category-badge">${app.category}</div>` : '';
+                const imageUrl = app.image || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=400';
+                
+                // Créer l'image avec lazy loading
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.className = 'app-image';
+                img.alt = app.name;
+                img.loading = 'lazy';
+                img.decoding = 'async';
+                
+                // Créer le contenu de la carte
+                const appInfo = document.createElement('div');
+                appInfo.className = 'app-info';
+                appInfo.innerHTML = `
+                    <div class="app-header">
+                        <div class="app-category">Application</div>
+                        ${categoryBadge}
+                    </div>
+                    <div class="app-name">${app.name}</div>
+                `;
+                
+                appCard.appendChild(img);
+                appCard.appendChild(appInfo);
+                
+                // Event listener
+                appCard.onclick = () => {
+                    showChoiceModal(app);
+                };
 
-        appCard.addEventListener('click', () => {
-            showChoiceModal(app);
-        });
+                fragment.appendChild(appCard);
+            });
 
-        appsGrid.insertBefore(appCard, addAppCard);
+            // Ajouter toutes les cartes en une seule opération DOM
+            appsGrid.insertBefore(fragment, addAppCard);
+
+            renderPagination(totalPages);
+        } finally {
+            isRendering = false;
+        }
     });
-
-    renderPagination(totalPages);
-
-    // Refresh dropdowns ONLY if not editing (to avoid disrupting UX, though mostly safe)
-    // Actually better to call it on data change.
 }
 
 function renderPagination(totalPages) {
@@ -249,10 +319,14 @@ function renderPagination(totalPages) {
     }
 }
 
-// Search handling
-searchInput.addEventListener('input', (e) => {
+// Search handling avec debouncing pour optimiser les performances
+const debouncedRenderApps = debounce(() => {
     currentPage = 1; // Reset to first page on new search
     renderApps();
+}, 300); // 300ms de délai
+
+searchInput.addEventListener('input', (e) => {
+    debouncedRenderApps();
 });
 
 // Category Filter handling is now done via custom click events
