@@ -113,13 +113,41 @@ const categoryTrigger = document.getElementById('category-trigger');
 const categoryDropdown = document.getElementById('category-dropdown');
 let selectedCategory = ''; // Store the value here instead of select.value
 
-const ITEMS_PER_PAGE = 9;
+let itemsPerPage = 9;
 let currentPage = 1;
 
 // Performance optimizations
 let renderTimeout = null;
 let lastAppsData = null; // Cache pour éviter les re-renders inutiles
 let isRendering = false; // Flag pour éviter les renders simultanés
+
+/**
+ * Calcule dynamiquement le nombre d'éléments par page
+ * en fonction de la taille de l'écran disponible
+ */
+function calculateItemsPerPage() {
+    const header = document.querySelector('header');
+    const mainEl = document.querySelector('main');
+    if (!header || !mainEl) return;
+
+    const columns = 3; // Toujours 3 colonnes
+    const headerHeight = header.offsetHeight;
+    const mainPadding = 40; // 20px top + 20px bottom
+    const paginationHeight = 60; // espace pour la pagination
+    const addCardHeight = 120; // hauteur du bouton ajouter
+    const availableHeight = window.innerHeight - headerHeight - mainPadding - paginationHeight - addCardHeight;
+    const availableWidth = mainEl.clientWidth - 48; // 24px padding * 2
+    const gridGap = 16;
+
+    // Largeur réelle d'une carte et hauteur via aspect-ratio 16:10
+    const cardWidth = (availableWidth - (columns - 1) * gridGap) / columns;
+    const cardHeight = cardWidth * (10 / 16);
+
+    // Nombre de rangées qui tiennent dans l'espace disponible
+    const rows = Math.max(1, Math.floor((availableHeight + gridGap) / (cardHeight + gridGap)));
+
+    itemsPerPage = Math.max(3, columns * rows);
+}
 
 // Debounce function pour optimiser les performances
 function debounce(func, wait) {
@@ -225,8 +253,11 @@ function renderApps() {
                 return matchesSearch && matchesCategory;
             });
 
+            // Recalculer le nombre d'items par page selon la taille de l'écran
+            calculateItemsPerPage();
+
             // Calculate pagination slices
-            const totalPages = Math.ceil(filteredApps.length / ITEMS_PER_PAGE);
+            const totalPages = Math.ceil(filteredApps.length / itemsPerPage);
 
             // Safety check for current page
             if (currentPage > totalPages && totalPages > 0) {
@@ -235,8 +266,8 @@ function renderApps() {
                 currentPage = 1;
             }
 
-            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-            const endIndex = startIndex + ITEMS_PER_PAGE;
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
             const pagedApps = filteredApps.slice(startIndex, endIndex);
 
             // Supprimer les cartes existantes (approche simple mais optimisée avec DocumentFragment)
@@ -523,5 +554,18 @@ ipcRenderer.on('fullscreen-state', (event, isFullScreen) => {
     }
 });
 
+// Recalculer et re-rendre quand la fenêtre change de taille
+const debouncedResize = debounce(() => {
+    const oldItemsPerPage = itemsPerPage;
+    calculateItemsPerPage();
+    if (oldItemsPerPage !== itemsPerPage) {
+        currentPage = 1;
+        renderApps();
+    }
+}, 200);
+
+window.addEventListener('resize', debouncedResize);
+
 // Initial render
+calculateItemsPerPage();
 renderApps();
