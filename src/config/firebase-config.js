@@ -1,6 +1,3 @@
-// Firebase Configuration for Nexus Hub (Realtime Database)
-// Replace the config below with the one from your Firebase Console
-
 const firebaseConfig = {
     apiKey: "AIzaSyAsrYMGFve8kYeUH_7cu7zzNIFRVpUpT28",
     authDomain: "nexus-hub-b65fb.firebaseapp.com",
@@ -11,9 +8,6 @@ const firebaseConfig = {
     databaseURL: "https://nexus-hub-b65fb-default-rtdb.europe-west1.firebasedatabase.app"
 };
 
-// Initialize Firebase
-// Note: L'avertissement "browser-targeted Firebase bundle" est normal dans Electron
-// Firebase fonctionne correctement malgré cet avertissement
 let database, appsRef, storage;
 try {
     firebase.initializeApp(firebaseConfig);
@@ -36,11 +30,13 @@ try {
     window.storage = null;
 }
 
-// Connection state (optional debug)
-database.ref(".info/connected").on("value", (snap) => {
-    if (snap.val() === true) {
-        console.log("Firebase Realtime Database: CONNECTED");
-    } else {
-        console.warn("Firebase Realtime Database: DISCONNECTED");
-    }
-});
+// État de connexion (debug optionnel) – uniquement si la DB est initialisée
+if (database) {
+    database.ref(".info/connected").on("value", (snap) => {
+        if (snap.val() === true) {
+            console.log("Firebase Realtime Database: CONNECTED");
+        } else {
+            console.warn("Firebase Realtime Database: DISCONNECTED");
+        }
+    });
+}

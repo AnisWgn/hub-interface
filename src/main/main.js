@@ -553,9 +553,12 @@ if (!gotTheLock) {
                     mimeType = 'image/jpeg';
             }
 
+            // Convertir le Buffer en base64 pour la sérialisation IPC
+            const base64Data = fileBuffer.toString('base64');
+
             // Retourner les données nécessaires
             return {
-                buffer: fileBuffer,
+                base64: base64Data,
                 fileName: fileName,
                 mimeType: mimeType,
                 ext: ext

@@ -38,11 +38,11 @@ const connectionTimeout = setTimeout(() => {
 }, 10000);
 
 // Listen for changes in Realtime Database (real-time sync) - Optimisé avec throttling
-if (typeof appsRef !== 'undefined') {
+if (window.appsRef) {
     let lastUpdateTime = 0;
     const THROTTLE_MS = 300; // Minimum 300ms entre les updates
     
-    appsRef.on('value', (snapshot) => {
+    window.appsRef.on('value', (snapshot) => {
         clearTimeout(connectionTimeout);
         updateConnectionStatus('connected');
         const data = snapshot.val();
@@ -74,7 +74,15 @@ if (typeof appsRef !== 'undefined') {
     
     function processAppsUpdate(data) {
         if (data) {
-            apps = data;
+            // Gérer à la fois un tableau direct et un objet clé/valeur
+            if (Array.isArray(data)) {
+                apps = data;
+            } else if (typeof data === 'object') {
+                apps = Object.values(data);
+            } else {
+                console.warn("Format de données inattendu pour kiosk-apps:", data);
+                apps = [];
+            }
         } else {
             console.log("Realtime Database empty, initializing default data...");
             apps = [
@@ -85,7 +93,7 @@ if (typeof appsRef !== 'undefined') {
                     category: 'Education'
                 }
             ];
-            appsRef.set(apps);
+            window.appsRef.set(apps);
         }
         updateCategoryDropdowns();
         renderApps();
@@ -96,7 +104,12 @@ if (typeof appsRef !== 'undefined') {
 }
 
 function saveApps() {
-    appsRef.set(apps).then(() => {
+    if (!window.appsRef) {
+        console.error("Impossible de sauvegarder les applications : appsRef est null/indéfini.");
+        alert("Erreur de connexion à Firebase. Vérifiez la configuration Firebase.");
+        return;
+    }
+    window.appsRef.set(apps).then(() => {
         updateConnectionStatus('connected');
     }).catch(err => {
         console.error("Realtime Database Sync Error:", err);
@@ -451,8 +464,16 @@ async function uploadImageToFirebaseStorage(filePath) {
             const storageRef = window.storage.ref();
             const imageRef = storageRef.child(uniqueFileName);
 
-            // Convertir le buffer en Blob
-            const blob = new Blob([fileData.buffer], { type: fileData.mimeType });
+            // Convertir le base64 en Blob
+            // Le fichier est retourné en base64 depuis le main process
+            const base64Data = fileData.base64;
+            const byteCharacters = atob(base64Data);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: fileData.mimeType });
 
             // Upload vers Firebase Storage
             const uploadTask = imageRef.put(blob);
@@ -464,8 +485,19 @@ async function uploadImageToFirebaseStorage(filePath) {
                     console.log(`Upload en cours: ${progress.toFixed(0)}%`);
                 },
                 (error) => {
-                    console.error('Erreur lors de l\'upload:', error);
-                    reject(error);
+                    console.error('Erreur lors de l\'upload Firebase Storage:', error);
+                    console.error('Code d\'erreur:', error.code);
+                    console.error('Message:', error.message);
+                    // Fournir un message d'erreur plus détaillé
+                    let errorMessage = 'Erreur lors de l\'upload vers Firebase Storage';
+                    if (error.code === 'storage/unauthorized') {
+                        errorMessage = 'Vous n\'avez pas les permissions nécessaires pour uploader vers Firebase Storage. Vérifiez les règles de sécurité Firebase.';
+                    } else if (error.code === 'storage/canceled') {
+                        errorMessage = 'L\'upload a été annulé';
+                    } else if (error.code === 'storage/unknown') {
+                        errorMessage = 'Une erreur inconnue s\'est produite lors de l\'upload';
+                    }
+                    reject(new Error(errorMessage));
                 },
                 async () => {
                     // Upload réussi, récupérer l'URL de téléchargement
@@ -475,6 +507,7 @@ async function uploadImageToFirebaseStorage(filePath) {
                         resolve(downloadURL);
                     } catch (error) {
                         console.error('Erreur lors de la récupération de l\'URL:', error);
+                        console.error('Code d\'erreur:', error.code);
                         reject(error);
                     }
                 }
@@ -505,7 +538,8 @@ browseImageBtn.addEventListener('click', async () => {
             console.log('Image uploadée avec succès:', firebaseUrl);
         } catch (error) {
             console.error('Erreur lors de l\'upload de l\'image:', error);
-            alert('Erreur lors de l\'upload de l\'image vers Firebase Storage. Le chemin local sera utilisé.');
+            const errorMessage = error.message || 'Erreur inconnue lors de l\'upload';
+            alert(`Erreur lors de l'upload de l'image vers Firebase Storage:\n\n${errorMessage}\n\nLe chemin local sera utilisé comme solution de secours.`);
             // En cas d'erreur, utiliser le chemin local comme fallback
             try {
                 const copiedPath = await ipcRenderer.invoke('copy-image-to-assets', filePath);
@@ -706,3 +740,19 @@ window.addEventListener('resize', debouncedResize);
 // Initial render
 calculateItemsPerPage();
 renderApps();
+
+// Fallback si aucune donnée Firebase n'est chargée (mode hors-ligne / problème réseau)
+setTimeout(() => {
+    if (!window.appsRef && apps.length === 0) {
+        console.warn("Aucune donnée Firebase reçue, initialisation d'un jeu d'applications local (offline).");
+        apps = [
+            {
+                name: 'Digiteq E-School',
+                url: 'https://digiteq-e-school.netlify.app/',
+                image: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8?auto=format&fit=crop&q=80&w=400',
+                category: 'Education'
+            }
+        ];
+        renderApps();
+    }
+}, 8000);
